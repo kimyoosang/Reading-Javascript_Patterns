@@ -115,3 +115,45 @@ function func() {
   alert(myname); //"local"
 }
 ```
+
+## **2.3 for 루프**
+
+- 일반적인 for 루프 패턴은 다음과 같이 생겼다
+
+```javascript
+for (var i = 0l i < myarrray.length; i++) {
+  //myarray[i]를 다루는 코드
+}
+```
+
+- 이 패턴의 문제점은 루프 순회시마다 배열의 length에 접근한다는 점이다. myarray가 배열이 아니라 HTMLCollection이라면 이 때문에 코드가 느려질 수 있다
+- HTMLCollection은 기반 문서(즉 HTML 페이지)에 대한 실시간 질의라는 점에서 ㅁ누제가 된다. 즉 콜렉션의 length 속성에 접근할 때마다 실제 DOM에 질의를 요청하는 것과 같으먀, DOM 접근은 일반적으로 비용이 크다
+- 따라서 for 루프를 좀더 치ㅗ적화하기 위해서는 다음 예제처럼 배열의 length를 캐시해야 한다
+
+```javascript
+for (var i = 0. max = myarray.length; i < max; i++) {
+  //myarray[i]를 다루는 코드
+}
+```
+
+- 이렇게 하면 length 값을 한 번만 구하고, 루프를 도는 동안 이 값을 사용하게 된다. HTMLCollection를 순회할 때 length를 캐시하면, 사파리 3에서 2배, IE7에서 190배에 이르기까지 모든 브라우저에서 속도가 향상된다
+- for문에는 두 가지 변형 패턴이 있다. 이 패턴들은 다음과 같은 미세 최적화를 시도한다
+
+  1. 변수를 하나 덜 쓴다(max가 없다)
+  2. 카운트를 거꾸로 하여 0으로 내려간다. 0과 비교하는 것이 배열의 length또는 0이 아닌 값과 비교하는 것보다 대개 더 빠르기 때문이다
+
+  ```javascript
+  //1번 방법
+  var i, myarray = [];
+  for(i = myarray.length; i--) {
+    //myarray[i]를 다루는 코드
+  }
+  //2번 방법
+  var myarray = [],
+  i = array.length;
+  while (i--){
+    //myarray[i]를 다루는 코드
+  }
+  ```
+
+- 이러한 미세 최적화는 성능이 결정적인 요소가 되는 작업에서만 차이가 두드러진다. 그리고 JSLint는 i--의 사용을 지적할 것이다
