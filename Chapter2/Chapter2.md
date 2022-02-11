@@ -157,3 +157,41 @@ for (var i = 0. max = myarray.length; i < max; i++) {
   ```
 
 - 이러한 미세 최적화는 성능이 결정적인 요소가 되는 작업에서만 차이가 두드러진다. 그리고 JSLint는 i--의 사용을 지적할 것이다
+
+## **2.4 for-in 루프**
+
+- for-in 루프는 배열이 아닌 객체를 순회할 때만 사용해야 한다
+- 자바스크립트에서 배열은 곧 객체이기 때문에 기술적으로는 배열을 순회할 때에도 for-in 루프를 쓸 수 있지만, 권장사항은 아니다. 배열 객체에 사용자가 정의한 기능이 추가되었다면 논리적인 오류가 발생할 수 있다
+- 객체의 프로퍼티를 순회할 때는 프로토타입 체인을 따라 상속되는 프로퍼티들을 걸러내기 위해 hasOwnProperty() 메서들 사용해야 한다
+
+```javascript
+var man = {
+  hands: 2,
+  legs: 2,
+  heads: 1,
+};
+//코드 어딘가에서 모든 객체에 메서드 하나가 추가되었다
+if (typeof Object.prototype.clone === "undefined") {
+  Object.prototype.clone = function () {};
+}
+//1.
+for (var i in man) {
+  if (man.hasOwnProperty(i)) {
+    console.log(i, ":", man[i]);
+  }
+}
+//콘솔에 출력되는 결과
+//hands:2
+//legs:2
+//heads:1
+
+//2. 안티패턴: hasOwnProperty를 확인하지 않는 for-in 루프
+for (var i in man) {
+  console.log(i, ":", man[i]);
+}
+//콘솔에 출력되는 결과
+//hands:2
+//legs:2
+//heads:1
+//clone: function()
+```
