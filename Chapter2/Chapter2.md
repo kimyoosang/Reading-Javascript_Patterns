@@ -213,3 +213,29 @@ if (typeof Object.prototype.myMethod !== "function") {
   };
 }
 ```
+
+## **2.6 switch 패턴**
+
+- 다음 패턴을 따르면 switch문의 가독성과 견고성을 향상시킬 수 있다
+
+  1. 각 case문을 switch문에 맞추어 정렬한다
+  2. 각 case문 안에서 코드를 들여쓰기 한다
+  3. 각 case문을 명확하게 break;로 종료한다
+  4. break문을 생략하여 통과 시키지 않는다. 그런 방법이 최선책이라는 확신이 있다면 해당 case에 반드시 기록을 남긴다. 코드를 읽는 사람에게는 오류로 보일 수 있기 때문이다
+  5. 상응하는 case문이 하나도 없을 때도 정상적인 결과가 나올 수 있도록 switch문 마지막에는 default:문을 쓴다
+
+  ```javascript
+  var inspect_me = 0,
+    result = "";
+
+  switch (inspect_me) {
+    case 0:
+      result = "zero";
+      break;
+    case 1:
+      result = "one":
+      break;
+    default:
+      result = "unknown";
+  }
+  ```
