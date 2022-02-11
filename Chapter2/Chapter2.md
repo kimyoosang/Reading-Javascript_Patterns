@@ -157,3 +157,85 @@ for (var i = 0. max = myarray.length; i < max; i++) {
   ```
 
 - 이러한 미세 최적화는 성능이 결정적인 요소가 되는 작업에서만 차이가 두드러진다. 그리고 JSLint는 i--의 사용을 지적할 것이다
+
+## **2.4 for-in 루프**
+
+- for-in 루프는 배열이 아닌 객체를 순회할 때만 사용해야 한다
+- 자바스크립트에서 배열은 곧 객체이기 때문에 기술적으로는 배열을 순회할 때에도 for-in 루프를 쓸 수 있지만, 권장사항은 아니다. 배열 객체에 사용자가 정의한 기능이 추가되었다면 논리적인 오류가 발생할 수 있다
+- 객체의 프로퍼티를 순회할 때는 프로토타입 체인을 따라 상속되는 프로퍼티들을 걸러내기 위해 hasOwnProperty() 메서들 사용해야 한다
+
+```javascript
+var man = {
+  hands: 2,
+  legs: 2,
+  heads: 1,
+};
+//코드 어딘가에서 모든 객체에 메서드 하나가 추가되었다
+if (typeof Object.prototype.clone === "undefined") {
+  Object.prototype.clone = function () {};
+}
+//1.
+for (var i in man) {
+  if (man.hasOwnProperty(i)) {
+    console.log(i, ":", man[i]);
+  }
+}
+//콘솔에 출력되는 결과
+//hands:2
+//legs:2
+//heads:1
+
+//2. 안티패턴: hasOwnProperty를 확인하지 않는 for-in 루프
+for (var i in man) {
+  console.log(i, ":", man[i]);
+}
+//콘솔에 출력되는 결과
+//hands:2
+//legs:2
+//heads:1
+//clone: function()
+```
+
+## **2.5 내장 생성자 프로토타입 확장하기 / 확장하지 않기**
+
+- 생성자 함수의 prototype 프로퍼티를 확장하는 것은 기능을 추가하는 좋은 방법이지만 때로는 지나치게 강력할 수 있다
+- Object(), Array(), Function() 과 같은 내장 생성자의 프로토타입을 확장하는 걳은 꽤 매력적이다. 그러나 이 때문에 코드의 지속성은 심각하게 저해될 수 있다. 코드가 예측에서 벗어나는 일이 많아지기 때문이다
+- 따라서 내장 생성자 프로토타입을 확장하지 않는 것이 최선이다. 예외가 허용되려면 다음과 같은 조건을 모두 만족시켜야 한다
+  1. 해당 기능이 ECMAScript의 향후 버전이다 자바스크립트 구현에서 일고나되게 내장 메서드로 구현될 예정이다. 예를 들어 ECMAScript 5에 기술되었으나 아직 브라우젱 내장되지 ㅇ낳은 메서드라면 추가할 수 있다. 이 경우에는 유용한 메서드를 미리 정의하는 것이라고 할 수 있다
+  2. 이 프로퍼티 또는 메서드가 이미 존재하는지, 즉 이미 코드 어딘가에 구현되어 있거나, 지원 브라우저 중 일부 자바스크립트 엔진에 내장되어 있는지 확인한다
+  - 이 변경사항을 명확히 문서화하고 팀 내에서 공유한다
+- 위 세 가지 조건을 만족했다면 다음 패턴에 따라 프로토타입에 추가 사항을 적용해도 된다
+
+```javascript
+if (typeof Object.prototype.myMethod !== "function") {
+  Object.prototype.myMethod = function () {
+    // 구현...
+  };
+}
+```
+
+## **2.6 switch 패턴**
+
+- 다음 패턴을 따르면 switch문의 가독성과 견고성을 향상시킬 수 있다
+
+  1. 각 case문을 switch문에 맞추어 정렬한다
+  2. 각 case문 안에서 코드를 들여쓰기 한다
+  3. 각 case문을 명확하게 break;로 종료한다
+  4. break문을 생략하여 통과 시키지 않는다. 그런 방법이 최선책이라는 확신이 있다면 해당 case에 반드시 기록을 남긴다. 코드를 읽는 사람에게는 오류로 보일 수 있기 때문이다
+  5. 상응하는 case문이 하나도 없을 때도 정상적인 결과가 나올 수 있도록 switch문 마지막에는 default:문을 쓴다
+
+  ```javascript
+  var inspect_me = 0,
+    result = "";
+
+  switch (inspect_me) {
+    case 0:
+      result = "zero";
+      break;
+    case 1:
+      result = "one":
+      break;
+    default:
+      result = "unknown";
+  }
+  ```
