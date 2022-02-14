@@ -206,3 +206,26 @@
     };
   }
   ```
+
+## **3.5 JSON**
+
+- JSON은 자바스크립트 객체 표기법(Javascript Object Notation)의 준말로, 데이터 전송 형식의 일종이다
+-
+- JSON은 그저 배열과 객체 리터럴 표기법의 조합일 뿐이다
+- JSON에서는 프로퍼티명을 따옴표로 감싸야 한다는 점이 객체 리터럴과의 유일한 문법적 차이다. JSON 문자열에는 함수나 정규식 리터럴을 사용할 수 없다
+  ```javascript
+  {"name":"value", "some":[1,2,3]}
+  ```
+
+**JSON 다루기**
+
+- eval을 사용하여 무턱대고 JSON 문자열을 평가하면 보안 문제가 있을 수 있기 때문에 가능하면 JSON.parse()를 사용하는것이 최선책이다
+  ```javascript
+  //입력되는 JSON문자열
+  var jstr = '{"mykey": "my value"}';
+  //안티패턴
+  var data = eval("(" + jstr + ")");
+  //권장안
+  var data = JSON.parse(jstr);
+  ```
+- JSON.parse() 메서드의 반대는 JSON.stringify()이다. 이 메서드는 객체 또는 배열을 인자로 받아 JSON 문자열로 직렬화한다
