@@ -159,3 +159,50 @@
     return new arguments.callee();
   }
   ```
+
+  ## **3.4 배열 리터럴**
+
+  - 자바스크립트의 배열은 내장 생성자인 Array()로도 배열을 생성할 수 있지만 리터럴 표기법도 존재하며, 객체 리터럴과 마찬가지로 배열 리터럴 표기법이 더 간단하고 장점이 많다
+  - 다음은 각각 Array()생성자와 리터럴 패턴을 사용하여, 동일한 원소를 가지는 배열 두 개를 만드는 방법을 보여준다
+
+  ```javascript
+  //세 개의 원소를 가지는 배열
+  //경고: 안티패턴이다
+  var a = new Array("itsy", "bitsy", "spider");
+
+  //위와 똑같은 배열
+  var a = ["itsy", "bitsy", "spider"];
+  ```
+
+  **배열 리터럴 문법**
+
+- 각 원소는 수미표로 분리하고 전에 목록을 대괄호를 감싼다
+- 객체나 다른 배열 등 어떤 타입의 값이든 배열 원소로 지정할 수 있다
+
+**배열 생성자의 특이성**
+
+- new Array()를 멀리해야하는 또 다른 이유는 Array()생성자에 숫자 하나를 전달할 경우, 이 값은 가지지 않는 배열을 생성하기 때문이다. 즉 new Array(3)은 길이가 3이고 실제 원소값은 가지지 않는 배열을 생성한다
+- 원소가 존재하지 않기 때문에 어느 원소에 접근하든 undefined 값을 얻게 된다
+- new Array()에 정수가 아닌 부동소숮덤을 전달할 경우 부동소수점을 가지는 수는 배열의 길이로 유효한 값이 아니기 때문에 에러가 발생한다
+- 런타임에 동적으로 배열을 생성할 경우 에러 발생을 피하려면 배열의 리터럴 표기법을 쓰는 것이 훨씬 안전하다
+
+**배열인지 판별하는 방법**
+
+- ECMAScript 5에서는 Array.isArray()라는 새로운 메서드가 정의되었다. 이 메서드는 인자가 배열이면 true를 반환한다
+  ```javascript
+  Array.isArray([]); //true
+  Array.isArray({
+    length: 1,
+    0: 1,
+    slice: function () {},
+  }); //false
+  ```
+- 실행환경에서 이 메서드를 사용할 수 없는 경우에는 Object.prototype.toString()메서드를 호출하여 판별할 수 있다. 배열에 toString을 호출하면 "[object Array]"라는 문자열을 반환하게 되어있다. 객체일 경우에는 문자열 "[object Object]"가 반환된다
+
+  ```javascript
+  if (typeof Array.isArray === "undefined") {
+    Array.isArray = function (arg) {
+      return Object.prototype.toString.call(arg) === "[object Array]";
+    };
+  }
+  ```
