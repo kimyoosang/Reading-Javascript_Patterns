@@ -95,3 +95,67 @@
   ```
 
 - 이와 같이 생성자에서는 어떤 객체라도 반환할 수 있다. 객체가 아닌것을 반환하려고 시도하면, 에러가 발생하진 않지만 그냥 무시되고 this에 의해 참조된 객체가 대신 반환된다
+
+## **3.3 new를 강제하는 패턴**
+
+- 생성자를 호출할 때 new를 빼먹으면 생성자 내부의 this가 전역 객체를 가르치게 되기 때문에 논리적인 오류가 생겨 예기치 못한 결과가 나올 수 있다
+- 생성자 내부에 this.member와 같은 코드가 있을 때 이 생성자를 new 없이 호출하면, 실제로는 전역 객체에 member라는 새로운 프로퍼티가 생성된다. 이 프로퍼티는 window.member 또는 그냥 member를 통해 접근할 수 있다
+- 전역 네임스페이스는 항상 깨끗하게 유지해야 하기 때문에, 이런 동작 방식은 대단히 바람직하지 않다
+- ECMAScript 5에서는 이러한 동작 방식의 문제에 대한 해결책으로, 스트릭트 모드에서는 this가 전역 객체를 가리키지 않도록 했다
+- ES5를 쓸 수 없는 상황이라면, 생성자 함수가 new 없이 호출되어도 항상 동일하게 동작하도록 보장하는 방법을 써야한다
+
+  1. 명명규칙
+
+  - 가장 간단한 대안은 명명규칙을 사용하는 것이다. 생성자 함수명의 첫글자를 대문자로 쓰고 '일반적인'함수와 메서드의 첫글자는 소문자를 사용한다
+
+  2. that 사용
+
+  - 명명 규칙은 올바른 동작을 권고할 뿐 강제하지는 못한다
+  - this에 모든 멤버를 추가하는 대신, that에 모든 멤버를 추가한 후 that을 반환한다
+  - 이 패턴의 문제는 프로토타입과의 연결고리를 잃어버리게 된다는 점이다. 즉 프로토타입에 추가한 멤버를 객체에서 사용할 수 없다
+
+  ```javascript
+  function Waffle() {
+    var that = {};
+    that.tastes = "yummy";
+    return that;
+  }
+  //간단한 객체라면 that이라는 지역변수를 만들 필요도 없이 객체 리터럴을 통해 객체를 반환해도 된다
+  function Waffle() {
+    return {
+      tastes: "yummy",
+    };
+  }
+  ```
+
+  3. 스스로를 호출하는 생성자
+
+  - 앞서 설명한 패턴의 문제점을 해결하고 인스턴스 객체에서 프로토타입의 프로터피들을 사용할 수 있게 하려면, 생성자 내부에서 this가 해당 생성자의 인스턴스인지를 확인하고, 그렇지 않은 경우 new와 함께 스스로를 재호출한다
+
+  ```javascript
+  function Waffle() {
+    if (!(this instanceof Waffle)) {
+      return new Waffle();
+    }
+    this.tastes = "yummy";
+  }
+  Waffle.prototype.wantAnother = true;
+  //호출확인
+  var first = new Waffle();
+  second = Waffle();
+
+  console.log(first.tastes); // "yummy"
+  console.log(second.tastes); // "yummy"
+
+  console.log(first.wantAnother); // true
+  console.log(second.wantAnother); // true
+  ```
+
+  - 인스턴스를 판별하는 또다른 범용적인 방법은 생성자 이름을 하드코딩하는 대신 arguments.callee와 비교하는 것이다
+  - 이것은 모든 함수가 호출될 때, 내부적으로 arguments라는 객체가 생성되며, 이 객체가 함수에 전달된 모든 인자를 담고있다는 점을 활용한 패턴이다. arguments의 callee라는 프로퍼티는 호출된 함수를 가리킨다. arguments.callee는 ES5의 스트릭트 모드에서는 허용되지 않는다는 점에 유의하라
+
+  ```javascript
+  if (!(this instanceof arguments.callee)) {
+    return new arguments.callee();
+  }
+  ```
