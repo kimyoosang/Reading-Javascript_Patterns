@@ -240,3 +240,60 @@ var setup = function () {
 ```
 
 - setup()은 반환도니 함수를 감싸고 있기 때문에 클로저를 생성한다. 클로저는 반환되는 함수에서는 접근할 수 있지만 코드 외부에서는 접근할 수 없기 때문에, 비공개 데이터 저장을 위해 사용할 수 있다
+
+## **4.4 자기 자신을 정의하는 함수**
+
+- 함수는 동적으로 정의할 수 있고 변수에 할당할 수 있다. 새로운 함수를 만들어 이미 다른 함수를 가지고 있는 변수에 할당한다면, 새로운 함수가 이전 함수를 덮어쓰게 된다
+
+```javascript
+var scareMe = function () {
+  alert("Boo!");
+  scareMe = function () {
+    alert("Double Boo!");
+  };
+};
+
+// 자기 자신을 정의하는 함수를 사용
+scareMe(); // Boo!
+scareMe(); // Dounle Boo!
+```
+
+- 이 패턴은 함수가 어떤 초기화 준비 작업을 단 한번만 수행할 경우에 유용하다. 함수가 자기 자신을 재정의하여 구현 내용을 갱신할 수 있다
+- 재정의된 함수의 작업량이 적기 때문에 이 패턴은 애플리케이션 성능에 확실히 도움이 된다
+- 이 패턴의 단점은 자기 자신을 재정의한 이유에는 이전에 우너본 함수에 추가했던 프로피트들을 모두 찾을 수 없게 된다는 점이다. 또한 함수가 다른 이름으로 사용된다면, 예를 들어 다른 변수에 할당되거나, 객체의 메서드로써 사용되면 재정의된 부분이 아니라 원본 함수의 본문이 실행된다
+
+```javascript
+// 1. 새로운 프로퍼티가 추가된다
+// 2. 함수 객체가 새로운 변수에 할당된다
+// 3. 함수는 메서드로써는 사용된다
+
+//1. 새로운 프로퍼티를 추가한다
+scareMe.property = "properly";
+
+//2. 다른 이름으로 할당한다
+var prank = scareMe;
+
+//3. 메서드로 사용한다
+var spooky = {
+  boo: scareMe,
+};
+
+// 새로운 이름으로 호출된다
+prank(); //Boo!
+prank(); //Boo!
+console.log(prank.property); //"properly"
+
+//메서드로 호출한다
+spooky.boo(); //Boo!
+sooky.boo(); //Boo!
+console.log(spooky.boo.property); //properly
+
+//자기 자신을 재정의한 함수를 사용한다
+scareMe(); //Double boo!
+scareMe(); //Double boo!
+console.log(scareMe.property); //undefined
+```
+
+- 함수가 새로운 변수에 할당되면 예상과 달리 자기 자신을 정의하지 않는다. 이 모든 호출들은 계속해서 전역 scareMe() 포인터를 덮어쓴다
+- 따라서 마지막에 전역 scareMe()가 호출되었을 때 비로소, "Double boo!"를 출력하도록 갱신된 부분이 처음으로 제대로 실행된다
+- 또한 screMe property도 더 이상 참조할 수 없게 된다
