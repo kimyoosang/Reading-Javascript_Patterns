@@ -96,3 +96,204 @@ function hoistMe() {
 
 - 지역변수 foo()는 나중에 정의되어도 상단으로 호이스팅되어 정상 동작하는 반면, bar()의 정의는 호이스팅되지 않고 선언문만 호이스팅 된다
 - 함수 호이스팅은 함수를 사용하기 전에 반드시 함수를 선언해야 한다는 규칙을 무시하므로 함수 표현식을 권장한다
+
+## **4.2 콜백 패턴**
+
+- 함수는 객체다. 즉 함수를 다른 함수에 인자로 전달할 수 있다. 이를 콜백함수, 혹은 콜백이라고 부른다
+
+**콜백 예제**
+
+```javascript
+var findNodes = finction () {
+  var i = 10000, //긴 루프
+      nodes = [], // 결과를 저장할 배열
+      found; // 노드 탐색 결과
+    while (i) {
+      i -= 1;
+      // 이 부분에 복잡한 로직이 들어간다
+      ndoes.push(found)
+    }
+    return nodes;
+}
+```
+
+- 이 함수는 findNodes()와 같은 형식으로 호출되며, DOM트리를 탐색해 필요한 엘리먼트의 배열을 반환한다
+
+```javascript
+var hide = function = (nodes) {
+  var i = 0, max = ndoes.length;
+  for(; i < max; i += 1) {
+    nodes[i].style.display = "none";
+  }
+}
+// 함수를 실행한다
+hide(fincNodes());
+
+```
+
+- 이 함수는 이름에서 짐작할 수 있듯이 페이지에서 노드를 숨긴다. 이 구현은 findNodes()에서 반환된 노드의 배열에 대해 hide()가 다시 루프를 돌아야하기 때문에 비효율적이다. findNodes()에서 노드를 선택하고 바로 숨긴다면 재차 루프를 돌지 않아 더 효율적인 것이다
+- 노드를 숨기는 로직의 실행을 콜백 함수에 위임하고 이 함수를 findNodes()에 전달한다
+
+```javascript
+var findNodes = function (callback) {
+  var i = 10000, //긴 루프
+    nodes = [], // 결과를 저장할 배열
+    found; // 노드 탐색 결과
+  // 콜백 함수를 호출할 수 있는지 확인한다
+  if (typeof callback !== "function") {
+    callback = false;
+  }
+  while (i) {
+    i -= 1;
+    // 이 부분에 복잡한 로직이 들어간다
+
+    // 여기서 콜백을 실행한다
+    if (callback) {
+      callback(found);
+    }
+    ndoes.push(found);
+  }
+  return nodes;
+};
+
+//콜백함수
+var hide = function = (nodes) {
+  nodes[i].style.display = "none";
+}
+```
+
+- findNodes()에는 콜백 함수가 추가되었는지 확인하고, 있으면 실행하는 작업 하나만 추가되었다
+- hide()의 구현은 노드들을 순회할 필요가 없어서 더 간단해졌다
+
+**콜백과 유효범위**
+
+- 콜백이 일회성의 익명 함수나 전역 함수가 아니고 객체의 메서드인 경우도 많다
+
+```javascript
+var myapp = {};
+myapp.color = "green";
+myapp.paint = function (node) {
+  node.style.color = this.color;
+};
+
+var findNodes = function (callback) {
+  // ...
+  if (typeof callback === "function") {
+    callback(found);
+  }
+};
+```
+
+- findNodes(mypapp.paint)를 호출하면 this.color가 정의되지 않아 예상대로 동작하지 않는다. findNodes()가 전역 함수이기 때문에 객체 this는 전역 객체를 참조한다. findNodes()가 dom이라는 객체의 메서드라면, 콜백 내부의 this는 예상과는 달리 myapp이 아닌 dom을 참조하게 된다
+- 이 문제를 해결하기 위해서는 콜백 함수와 함꼐 콜백이 속해 있는 객체를 전달하면 된다
+
+```javascript
+var findNodes = function (callback, callback_obj) {
+  if (typeof callback === "string") {
+    callback = callback_obj[callback];
+  }
+  // ...
+  if (typeof callback === "function") {
+    callback.call(callback_obj, found);
+  }
+};
+```
+
+**비동기 이벤트 리스너**
+
+- 대부분의 클라이언트 측 브라우저 프로그래밍은 이벤트 구동 방식이다. 페이지의 로딩이 끝나면 load 이벤트를 발생시킨다
+- 자바스크립트가 이벤트 구동형 프로그래밍에 특히 적합한 이유는 프로그램이 비동기적으로 달리 말하면 무작위로 동작할 수 있게 하는 콜백 패턴 덕분이다
+- 어떤 이벤트는 영영 발생하지 않을 수도 있기 때문에 때로는 콜백 함수가 필요 이상으로 많을 수 도 있다
+
+**타임아웃**
+
+- 브라우저의 window 객체에 의해 제공되는 타임아웃 메서드인 setTimeout()과 setInterval()은 콜백함수를 받아서 실행시킨다
+
+```javascript
+var thePiotThickens = function () {
+  console.log("500ms later,,,");
+};
+setTimeout(thePiotThickens, 500);
+```
+
+- 이 함수는 곧바로 실항하지 않고 setTimeout()이 나중에 호출할 수 있도록 함수를 가리키는 포인터만을 전달하고 있다
+
+**라이브러리에서의 콜백**
+
+- 콜백은 라이브러리를 설계할 때 유용한 간단하고 강력한 패턴이다. 소프트웨어 라이브러리에 들어갈 코드는 가능한 범용적이고 재사용할 수 있어야 한다. 콜백이 이런 일반화에 도움이 될 수 있다
+- 핵심 기능에 집중하고 콜백의 형태로 '연결고리'를 제공하라. 콜백 함수를 활용하면 조금 더 쉽게 라이브러리 메서드를 만들고 확장하고 가다듬을 수 있다
+
+## **4.3 함수 반환하기**
+
+- 함수는 객체이기 때문에 반환 값으로 사용할 수 있다. 즉 함수의 실행 결과로 꼭 어떤 데이터 값이나 배열을 반환할 필요는 없다는 뜻이다
+
+```javascript
+var setup = function () {
+  alert(1);
+  return function () {
+    alert(2);
+  };
+  //setup함수를 사용
+  var my = setup(); //alert으로 1이 출력된다
+  my(); ///alert로 2가 출력된다
+};
+```
+
+- setup()은 반환도니 함수를 감싸고 있기 때문에 클로저를 생성한다. 클로저는 반환되는 함수에서는 접근할 수 있지만 코드 외부에서는 접근할 수 없기 때문에, 비공개 데이터 저장을 위해 사용할 수 있다
+
+## **4.4 자기 자신을 정의하는 함수**
+
+- 함수는 동적으로 정의할 수 있고 변수에 할당할 수 있다. 새로운 함수를 만들어 이미 다른 함수를 가지고 있는 변수에 할당한다면, 새로운 함수가 이전 함수를 덮어쓰게 된다
+
+```javascript
+var scareMe = function () {
+  alert("Boo!");
+  scareMe = function () {
+    alert("Double Boo!");
+  };
+};
+
+// 자기 자신을 정의하는 함수를 사용
+scareMe(); // Boo!
+scareMe(); // Dounle Boo!
+```
+
+- 이 패턴은 함수가 어떤 초기화 준비 작업을 단 한번만 수행할 경우에 유용하다. 함수가 자기 자신을 재정의하여 구현 내용을 갱신할 수 있다
+- 재정의된 함수의 작업량이 적기 때문에 이 패턴은 애플리케이션 성능에 확실히 도움이 된다
+- 이 패턴의 단점은 자기 자신을 재정의한 이유에는 이전에 우너본 함수에 추가했던 프로피트들을 모두 찾을 수 없게 된다는 점이다. 또한 함수가 다른 이름으로 사용된다면, 예를 들어 다른 변수에 할당되거나, 객체의 메서드로써 사용되면 재정의된 부분이 아니라 원본 함수의 본문이 실행된다
+
+```javascript
+// 1. 새로운 프로퍼티가 추가된다
+// 2. 함수 객체가 새로운 변수에 할당된다
+// 3. 함수는 메서드로써는 사용된다
+
+//1. 새로운 프로퍼티를 추가한다
+scareMe.property = "properly";
+
+//2. 다른 이름으로 할당한다
+var prank = scareMe;
+
+//3. 메서드로 사용한다
+var spooky = {
+  boo: scareMe,
+};
+
+// 새로운 이름으로 호출된다
+prank(); //Boo!
+prank(); //Boo!
+console.log(prank.property); //"properly"
+
+//메서드로 호출한다
+spooky.boo(); //Boo!
+sooky.boo(); //Boo!
+console.log(spooky.boo.property); //properly
+
+//자기 자신을 재정의한 함수를 사용한다
+scareMe(); //Double boo!
+scareMe(); //Double boo!
+console.log(scareMe.property); //undefined
+```
+
+- 함수가 새로운 변수에 할당되면 예상과 달리 자기 자신을 정의하지 않는다. 이 모든 호출들은 계속해서 전역 scareMe() 포인터를 덮어쓴다
+- 따라서 마지막에 전역 scareMe()가 호출되었을 때 비로소, "Double boo!"를 출력하도록 갱신된 부분이 처음으로 제대로 실행된다
+- 또한 screMe property도 더 이상 참조할 수 없게 된다
