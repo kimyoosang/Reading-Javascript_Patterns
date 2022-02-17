@@ -376,3 +376,64 @@ var result = (function () {
 - 이 패턴의 장점은 즉시 실행 함수 패턴의 장점과 동일하다. 단 한번의 초기화 작업을 실행하는 동안 전역 네임스페이스를 보호할 수 있다. 코드를 익명 함수로 감싸는 것과 비교하면 이 패턴은 문법적으로 신경써야할 부분이 좀덤 많은 것처럼 보일 수도 있다. 그러나 초기화 작업이 더 복잡하다면 전체 초기화 절차를 구조화 하는데 도움이 된다
 - 이 패턴의 단점은 대부분의 자바스크립트 압축 도구가 즉시 실행 함수 패턴에 비해 효과적으로 압축하지 못할 수 있다는 것이다. 비공개 프로퍼티와 메서드의 이름은 더 짧게 변경되지 않느데 압축 도구의 관점에서는 그런 방식이 안전하기 때문이다.
 - 구글의 클로저 컴파일러의 고급 모드만이 즉시 초기화되는 객체의 프로퍼티명을 단축시켜준다
+
+## **4.7 초기화 시점의 분기**
+
+- 초기화 시점의 분기(로드타임 분기)는 최적화 패턴이다. 어떤 조건이 프로그램의 생명주기 동안 변경되지 않는게 확실할 경우, 조건을 단 한번만 확인하는 것이 바람직하다. 브라우저 탐지가 저형적인 예다
+- DOM엘리먼트의 계산된 스타일을 확인하거나 이벤트 핸들러를 붙이는 작업도 초기화 시점 분기 패턴의 이점을 살릴 수 있는 도 다른 후보들이다
+
+```javascript
+//변경이전
+var utils = {
+  addlistener: function (el, type, fn) {
+    if (typeof window.addEventListener === "function") {
+      el.addEventListener(type, fn, false);
+    } else if (typeof document.attachEvent === "function") {
+      //IE
+      el.attachEvent("on", +type, fn);
+    } else {
+      //구형의 브라우저
+      el["on" + type] = fn;
+    }
+  },
+  removeEventListener: function (el, type, fn) {
+    //거의 동일한 코드
+  },
+};
+
+//변경이후
+
+//인터페이스
+var utils = {
+  addListener: null,
+  removeListener: null,
+};
+//구현
+if (typeof winodw.addEventListener === "function") {
+  utils.addListener = function (el, type, fn) {
+    el.addEventListener(type, fn, false);
+  };
+  utils.removeListener = function (el, type, fn) {
+    el.removeEventListener(type, fn, flase);
+  };
+} else if (typeof document.attachEvent === "function") {
+  //IE
+  utils.addListener = function (el, type, fn) {
+    el.attachEvent("on" + type, fn);
+  };
+  utils.removeListener = function (el, type, fn) {
+    el.detachEvent("on" + type, fn);
+  };
+} else {
+  //구형 브라우저
+  utils.addListener = function (el, type, fn) {
+    el["on" + type] = fn;
+  };
+  utils.removeListener = function (el, type, fn) {
+    el["on" + type] = null;
+  };
+}
+```
+
+- 이 패턴을 사용할 때 브라우저의 기능을 섣불리 가정하지 말아야 한다. 예를 들어, 브라우저가 window.addEventListener를 지원하지 않는다고 해서 이 브라우저가 IE이고 SMLHTTPRequest도 지원하지 않을 것이라고 가정해서는 안된다는 얘기다
+- 가장 좋은 전략은 초기화 시점의 분기를 사용해 기능을 개별적으로 탐지하는 것이다
