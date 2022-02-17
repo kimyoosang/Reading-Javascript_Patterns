@@ -437,3 +437,20 @@ if (typeof winodw.addEventListener === "function") {
 
 - 이 패턴을 사용할 때 브라우저의 기능을 섣불리 가정하지 말아야 한다. 예를 들어, 브라우저가 window.addEventListener를 지원하지 않는다고 해서 이 브라우저가 IE이고 SMLHTTPRequest도 지원하지 않을 것이라고 가정해서는 안된다는 얘기다
 - 가장 좋은 전략은 초기화 시점의 분기를 사용해 기능을 개별적으로 탐지하는 것이다
+
+## **4.8 함수 프로퍼티 - 메모이제이션(Memoization)패턴**
+
+- 언제든지 함수에 사용자 정의 프로퍼티를 추가할 수 있다. 함수에 프로퍼티를 추가하여 결과를 캐시하면 다음 호출 시점에 복잡한 연산을 반복하지 않을 수 있다. 이런 활용 방법을 메모이제이션 패턴이라고 한다
+
+```javascript
+var myFunc = function (param) {
+  if (!myFunc.cache[param]) {
+    var result = {};
+    // 비용이 많이 드는 수행...
+    myFunc.cache[param] = result;
+  }
+  return myfunc.cache9param;
+};
+//캐시 저장 공간
+myFunc.cache = {};
+```
