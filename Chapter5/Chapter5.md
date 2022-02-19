@@ -416,3 +416,135 @@ MYAPP.utilities.module = (function (app, global) {
   //전역 애플리케이션 네임스페이스 객체에 대한 참조가 지역 변수화된다
 })(MYAPP, this);
 ```
+
+## **5.5 샌드박스 패턴**
+
+- 샌드박스 패턴은 네임스페이스 패턴의 다음과 같은 단점을 해결한다
+  1. 애플리케이션 전역 객체가 단 하나의 전역 변수에 의존한다. 따라서 네임스페이스 패턴으로는 동일한 애플리케이션이나 라이브러리의 두 가지 버전을 한 페이지에서 실행시키는 것이 불가능하다. 여러 버전들이 모두 이를테면 MYAPP 이라는 동일한 전역 변수명을 쓰기 때문이다
+  2. MYAPP.utilities.array 와 같이 점으로 연결된 긴 이름을 써야 하고 런타임에는 탐색 작업을 거쳐야 한다
+- 샌드박스 패턴은 어떤 모듈이 다른 모듈과 그 모듈의 샌드박스에 영향을 미치지 않고 동작할 수 있는 환경을 제공한다
+
+**전역 생성자**
+
+- 네임스페이스 패턴에서는 전역 객체가 하나다
+- 샌드박스 패턴의 유일한 전역은 생성자다. 이 생성자를 통해 객체들을 생성한다
+- 이 생성자에 콜백 함수를 전달해 해당 코드를 샌드박스 내부 환경으로 격리시킬 것이다
+
+  ```javascript
+  //샌드박스 사용법은 다음과 같아
+  new Sandbox(function (box) {
+    //여기에 코드가 들어간다...
+  });
+  ```
+
+- box객체는 네임스페이스 패턴에서의 MYAPP과 같은 것이다. 코드가 동작하는데 필요한 모든 라이르버리 기능들이 여기에 들어간다
+- 이 패턴에 두 가지를 추가해보다
+
+  1. new를 강제하는 패턴을 활용하여 객체를 생성할 때 new를 쓰지 않아도 되게 만든다
+  2. Sandbox() 생성자가 선택적인 인자를 하나 이상 받을 수 있게 한다. 이 인자들은 객체를 생성하는 데 필요한 모듈의 이름을 지정한다. 우리는 코드의 모듈화를 지향하고 있으므로, Sandbox()가 제ㅐ공하는 기능 대부분이 실제로는 모듈안에 담겨지게 될 것이다
+
+- 샌드박스 객체의 인스턴스를 여러개 만드는 예제. 한 인스턴스 내부에 다른 인스턴스를 중첩시킬 수도 있고, 두 인스턴스간의 간섭 현상은 일어나지 않는다
+
+  ```javascript
+  Snadbox("dom", "event", function (box) {
+    //dom과 event를 가지고 작업한는 코드
+    Sandbox("ajax", function (box) {
+      //샌드박스된 box객체를 또 하나 만든다
+      //이 'box'객체는 바깥쪽 함수의 'box'객체와는 다르다
+      //...
+      //ajax를 사용하는 작업 완료
+    });
+    //더 이상 ajax 모듈의 흔적은 찾아볼 수 없다
+  });
+  ```
+
+- 샌드박스 패턴을 사용하면 콜백 함수로 코드를 감싸기 때문에 전역 네임스페이스를 보호할 수 있다
+- 필요하다면 함수가 곧 객체라는 사실을 활용하여 Sandbox() 생성자의 '스태틱' 프로퍼티에 데이터를 저장할 수도 있다
+- 원하는 유형별로 모듈의 인스턴스를 여러 개 만들 수도 있다. 이 인스턴스들은 각각 독립적으로 동작하게 된다<br></br>
+
+- 그럼 이제 이 모든 기능을 지원하는 snabox() 생성자와 그 모듈을 구현하는 방법을 살펴보자
+
+**모듈 추가하기**
+
+- Sandbox() 생성자 함수 역시 객체이므로, modules라는 프로퍼티를 추가할 수 있다
+
+```javascript
+Sandbox.modules = {};
+
+Sandbox.modules.dom = function (box) {
+  box.getElement = function () {};
+  box.getStyle = function () {};
+  box.foo = "bar";
+};
+
+Sandbox.modules.event = function (box) {
+  //필요에 따라 다음과 같이 Sandbox 프로토타입에 접근할 수 있다
+  //box.contructor.prototype.m = 'mmm'
+  box.attachEvent = function () {};
+  box.detachEvent = function () {};
+};
+Sandbox.modules.ajax = function (box) {
+  box.makeRequest = function () {};
+  box.getResponse = function () {};
+};
+```
+
+- 위 예제에서는 dom, event, ajax라는 모듈을 추가했다
+
+**생성자 구현**
+
+- 이제 Sandbox() 생성자를 구현한다
+
+```javascript
+function Sandbox() {
+  //arguments를 배열로 바꾼다
+  var args = Array.prototype.slice.call(arguments),
+    //마지막 인자는 콜백 함수다
+    callback = args.pop();
+  //모듈은 배열로 전달될 수도 있고, 개별 인자로 전달될 수도 있다
+  (modules = args[0] && typeof args[0] === "string" ? args : args[0]), i;
+
+  //함수가 생성자로 호출되도록 보장한다
+  if (!(this instanceof Sandbox)) {
+    return new Sandbox(modules, callback);
+  }
+
+  //this에 필요한 프로퍼티들을 추가한다
+  this.a = 1;
+  this.b = 2;
+
+  //코어 'this' 객체에 모듈을 추가한다
+  //모듈이 없거나 "*"이면 사용 가능한 모든 모듈을 사용한다는 의미다
+  if (!modules || modules === "*" || modules[0] === "*") {
+    modules = [];
+    for (i in Sandbox.modules) {
+      if (Sandbox.modules.hasOwnProperty(i)) {
+        modules.push(i);
+      }
+    }
+  }
+  //필요한 모듈들을 초기화한다
+  for (i = 0; i < modules.length; i += 1) {
+    Sandbox.modules[modules[i]](this);
+  }
+
+  //콜백 함수를 호출한다
+  callback(this);
+}
+
+//필요한 프로토타입 프로퍼티들을 추가한다
+Sandbox.prototype = {
+  name: "MY Application",
+  version: "1.0",
+  getName: function () {
+    return this.name;
+  },
+};
+```
+
+- 이 구현에서 핵심적인 내용들은 다음과 같다
+  1. this가 Sandbox의 인스턴스인지 확인하고, 그렇지 않으면 (즉 Sandbox()가 new 없이 호출되었다면) 함수를 생성자로 호출한다
+  2. 생성자 내부에서 this에 프로퍼티를 추가한다. 생성자의 프로토타입에도 프로퍼티를 추가할 수 있다
+  3. 필요한 모듈은 배열로도, 개별적인 인자로도 전달할 수 있고, 쓸 수 있는 모듈을 모두 쓰겠다는 의미로 생략할 수도 있다. 이 예제에서는 필요한 기능을다른 파일로부터 로딩하는 것 까지는 구현하지 않았지만, 이러한 선택지도 확실히 고려해보아야 한다
+  4. 필요한 모듈을 모두 파악한 다음에는 각 모듈을 초기화한다. 다시 말해 각 모듈을 구현한 함수를 호출한다
+  5. 생성자의 마지막 인자를 콜백 함수다. 이 콜백 함수는 맨 마지막에 호출되며, 새로 생성된 인스턴스가 인자로 전달된다. 이 콜백 함수가 실제 사용자의 샌드박스이며 필요한 기능을 모두 갖춘 상태에서 box 객체를 전달받게 된다
