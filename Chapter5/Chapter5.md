@@ -754,3 +754,67 @@ Sandbox.prototype = {
   ```javascript
   document.getElementByTagName("head")[0].appendChild(newnode);
   ```
+
+## **5.9 method() 메서드**
+
+- 자바스크립트를 좀더 클래스 기반의 형식으로 만드는 패턴은, 당장 필요하지 않지만 다른 애플리케이션 코드에서 만나게 될 수도 있기 때문에 알아두는 것이 좋다
+- 생성자 본문 내에서 인스턴스 프로퍼티를 추가할 수 있다는 점에서, 생성자 함수의 사용법은 자바에서 클래스를 사용하는 것과 비슷하다. 그러나 this에 인스턴스 메서드르르 추가하게 되면 인스턴스마다 메서드가 재생성되어 메모리를 잡아먹기 때문에 비효율적이다
+- 따라서 재사용 가능한 메서드는 생성자의 prototype 프로퍼티에 추가되어야 한다
+- 그런데 prototyep 이란 것이 다른 개발자들에게는 낯선 개념일 수 있기 때문에, method()라는 메서드 속에 숨겨두는 것이다
+- mothod()라는 문법 설탕을 사용해 '클래스'를 정의하는 방법
+
+  ```javascript
+  var Person = function (name) {
+    this.name = name;
+  }
+    .method("getName", function () {
+      return this.name;
+    })
+    .methdd("setName", function (name) {
+      this.name = name;
+      return this;
+    });
+  ```
+
+  - 생성자에 연이어 method()가 호출되고, 계속해서 그 다음 method() 호출이 이어진다
+  - 이 예제는 앞서 설명한 체이닝 패턴을 따르고 있고 덕분에 '클래스'전체를 하나의 명령문으로 정의했다
+
+- mothod()는 두 개의 매개변수를 받는다
+
+  1. 새로운 메서드의 이름
+  2. 메서드의 구현 내용
+
+- method()메서드의 구현은 다음과 같다
+
+  ```javascript
+  if (typeof Function.prototype.method !== "function") {
+    this.prototype.method = function (name, implementation) {
+      this.prototype[name] = implementation;
+      return this;
+    };
+  }
+  ```
+
+  - 위의 구현을 보면 먼저 해당 메서드가 이미 구현되어 있는지 확인한다
+  - 여기서는 this가 생성자 함수를 가리키기 때문에 생성자 함수의 프로토타입이 확장된다
+
+## **5.10 요약**
+
+- 이 장에서는 객체 리터럴과 생성자 함수에서 더 나아가 객체를 생성하는 다양한 패턴들을 살펴보았다
+
+1. 네임스페이스 패턴
+
+- 전역 공간을 개끗하게 유지하고 코드를 구조화하여 정리하도록 도와주는 패턴
+
+2. 의존 관계 선언 패턴
+3. 비공개 패턴
+
+- 비공개 멤버, 특권 메서드, 비공개 멤버를 구현할 때 신경써야 할 경우들, 객체 리터럴을 사용하면서 비공개 멤버를 구현하는 방법, 비공개 메서드를 공개 메서드처럼 노출하는 방법 등
+
+4. 샌드박스 패턴
+
+- 긴 네임스페이스의 대안
+- 자신의 코드와 모듈에 독자적인 실행 황경을 부여할 수 있다
+
+5. 객체 상수와 공개/비공개 스태틱 멤버
+6. 체이닝 패턴과 method() 메서드
