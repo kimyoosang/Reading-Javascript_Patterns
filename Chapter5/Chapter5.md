@@ -711,3 +711,46 @@ Sandbox.prototype = {
   //4. 값은 그대로인가?
   constant.get("maxwidth") //480
   ```
+
+## **5.8 체이닝 패턴**
+
+- 체이닝 패턴이란 객체에 연쇄적으로 메서들르 호출할 수 있도록 하는 패턴이다. 즉 여러가지 동작을 수행할 때, 먼저 수행한 동작의 반환 값을 변수에 할당한 후 다음 작업을 할 필요가 없기 때문에, 호출을 여러 줄에 걸쳐 쪼개지 않아도 된다
+  ```javascript
+  myobj.method1("hello").method2().method3("world").method4();
+  ```
+- 만약 메서드에 의미있는 반환 값이 존재하지 않는다면, 현재 작업중인 객체 인스턴스인 this를 반환하게 한다. 이렇게 하면 객체의 사용자는 앞선 메서드에 이어 다음 메서드를 바로 호출할 수 있다
+
+  ```javascript
+  var obj = {
+    value: 1,
+    increment: function () {
+      this.value += 1;
+      return this;
+    },
+    add: function () {
+      this.value += v;
+      return this;
+    },
+    shout: function () {
+      alert(this.value);
+    },
+  };
+
+  //메서드 체이닝 호출
+  obj.increment().add(3).shout(); //5
+  ```
+
+**체이닝 패턴의 장단점**
+
+- 장점
+  1. 코드량이 줄고 코드가 좀더 간결해져 거의 하나의 문장처럼 읽히게 할수 있다
+  2. 체이닝 패턴을 통해 함수를 쪼개는 방법을 생각하게 되고, 혼자서 너무 많은 일을 처리하려는 함수보다는 좀더 작고 특화된 함수를 만들게 된다. 장기적으로는 이런방법을 통해 유지보수가 개선된다
+- 단점
+  1. 디버깅하기가 어렵다. 코드의 어느 라인에서 에러가 발생했는지 알아내더라도, 그 라인에서 수행하는 일이 너무 많을 수 잇기 때문이다
+- 이 패턴은 널리 사용된다
+
+  - DOM API를 들여다보면, DOM요소들도 체이닝 패턴을 사용하는 경향이 있음을 알 수 있다
+
+  ```javascript
+  document.getElementByTagName("head")[0].appendChild(newnode);
+  ```
