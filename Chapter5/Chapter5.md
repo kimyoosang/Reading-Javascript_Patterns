@@ -651,3 +651,63 @@ Sandbox.prototype = {
   ```
 
 - 공개/비공개 스태틱 프로퍼티는 상당히 편리하다. 특정 인스턴스에 한정되지 않는 메서드와 데이터를 담을 수 있고 인스턴스별로 매번 재생성되지도 않는다
+
+## **5.7 객체 상수**
+
+- 자바스크립트에는 상수가 없지만 대다수 최신 브라우저 환경에서는 const 문을 통해 상수를 생성할 수 있다
+- 이어질 예제는 다음과 같은 메서드를 제공하는 범용 constant 객체를 구현한 것이다
+
+  1. set(name, value): 새로운 상수를 정의한다
+
+  2. isDefine(name): 특정 이름의 상수가 있는지 확인한다
+
+  3. get(name): 상수의 값을 가져온다
+
+- 이 예제에서는 상수 값으로 원시 데이터 타입만 허용된다. 또한 선언하려는 상수의 이름이 toString이란 hasOwnProperty 등 내장 프로퍼티의 이름과 겹치지 않도록 보장하기 위해 hasOwnProperty()를 사용한 별도의 확인 작업을 거친다. 마지막으로 모든 상수의 이름 앞에 임의로 생성된 접두어를 붙인다
+
+  ```javascript
+  var constant = (function() {
+    var constants = {},
+    ownProp = Object.prototype.hasOwnProperty,
+    allowed = {
+      string:1,
+      number:1,
+      boolean:1
+    },
+    prefix = (Math.random() + "_").slice(2)
+    return {
+      set: function(name, value) {
+        if(this.isDefined(name)) {
+          return fasle
+        }
+        if(!ownProp.call(allowed, typeof value)) {
+          return false
+        }
+        constants[prefix + name] = value
+        return true
+      },
+      isDefined: function(name) {
+        return ownProp.call(canstants, prefix + name)
+      }
+      get: function (name) {
+        if(this.isDefined(name)) {
+          return constants[profix + name]
+        }
+        return null
+      }
+    }
+  }())
+
+  //테스트
+  //1. 이미 정의되었는지 테스트
+  constant.isDefined("maxwidth") //false
+
+  //2. 정의한다
+  constant.set("maxwidth", 480) //true
+
+  //3. 정의되었는지 다시 확인한다
+   constant.isDefined("maxwidth") //true
+
+  //4. 값은 그대로인가?
+  constant.get("maxwidth") //480
+  ```
