@@ -272,3 +272,147 @@ myarray.inArray(["a", "b", "z"], "z"); // 2
 
 - 즉시 실행 함수의 마지막 부분을 보면, 공개적인 접근을 허용해도 괜찮겠다고 결정한 기능들이 myarray 객체에 채워진다
 - 이제 공개된 메서드인 indexOf()에 예기치 못한 일이 일어나더라도, 비공개 함수인 indexOf()는 안전하게 보혿괴기 때문에 inArray()는 계속해서 잘 동작할 것이다
+
+## **5.4 모듈 패턴**
+
+- 모듈 패턴은 늘어나는 코드를 구조화하고 정리하는 데 도움이 되기때문에 널리 쓰인다
+- 모듈 패턴을 사용하면 개별적인 코드를 느슨하게 결합시킬 수 있다. 따라서 각 기능들을 블랙박스처럼 다루면서도 소프트웨어 개발 중에 요구 사항에 따라 기능을 추가하거나 교체하거나 삭제하는 것도 자유롭게 할 수 있다
+- 모듈 패턴은 다음 패턴들 여러개를 조합한 것이다
+  1. 네임스페이스 패턴
+  2. 즉시 실행 함수
+  3. 비공개 멤버와 특권 멤버
+  4. 의존 관계 선언
+- 즉시 실행 함수의 비공개 유효범위를 사용하면, 비공개 프로퍼티와 메서드를 마음껏 선언할 수 있다. 모듈에 의존 관계가 있다면 즉시 실행 함수 상단에서 정의한다
+
+```javascript
+
+MYAPP.namespace("MYAPP.utilities.array")
+MYAPP.utilities.array = (function () {
+
+  //의존관계
+  var uobj = MYAPP.utilities.object,
+  var uobj = MYAPP
+  ulang = .utilities.lang
+
+  //비공개 프로퍼티
+  array_string = "[object Array]"
+  ops = Object.prototype.toString
+
+  //비공개 메서드들
+  //...
+
+  //var선언을 마친다
+
+  //필요하면 일회성 초기화 절차를 실행한다
+  // ...
+
+  //공개 API
+  return{
+    inArray: function (needle, haystack) {
+      for(var i = 0; max = haystack.length; i += 1) {
+        if(haystack[i] === needle) {
+          return true
+        }
+      }
+    }
+    isArray: function (a) {
+      return ops.call(a) === array.string
+    }
+    //... 더 필요한 메서드와 프로퍼티를 여기 추가한다
+  };
+}());
+
+```
+
+**모듈 노출 패턴**
+
+- 모든 메서드를 비공개 상태로 유지하고, 최종적으로 공개 API를 갖출 때 공개할 메서드만 골라서 노출하는 패턴
+
+```javascript
+MYAPP.utilities.array = (function () {
+  //비공개 프로퍼티
+  array_string = "[object Array]";
+  ops = Object.prototype.toString;
+
+  //비공개 메서드들
+  var inArray = function (needle, haystack) {
+    for (var i = 0; (max = haystack.length); i += 1) {
+      if (haystack[i] === needle) {
+        return true;
+      }
+    }
+  };
+  var isArray = function (a) {
+    return ops.call(a) === array.string;
+  };
+
+  //var선언을 마친다
+
+  //공개 API 노출
+  return {
+    isArray: isArray,
+    indexOf: inArray,
+  };
+})();
+```
+
+**생성자를 생성하는 모듈**
+
+- 모듈 패턴을 사용하면서 생성자 함수를 사용해 객체를 만드는 패턴
+- 모듈을 감싼 즉시 실행 함수가 마지막에 객체가 아니라 함수를 반환하게 하면 된다
+- 다음 모듈 패턴 예제는 생성자 함수인 MYAPP.utilities.Array를 반환한다
+
+```javascript
+
+MYAPP.namespace("MYAPP.utilities.array")
+MYAPP.utilities.array = (function () {
+
+  //의존관계
+  var uobj = MYAPP.utilities.object,
+  var uobj = MYAPP
+  ulang = .utilities.lang
+
+  //비공개 프로퍼티와 메스드들을 선언한 후...
+  Constr;
+  //var 선언을 마친다
+
+  //필요하면 일회성 초기화 절차를 실행한다
+  // ...
+
+  //공개 API - 생성자 함수
+  Constr = function (o) {
+    this.elements = this.utilities.Array(o)
+  }
+  //공개 API -프로토타입
+  Consrt.prototype = {
+    contructor: MYAPP.utilities.Array,
+    version: "2.0",
+    toArrray: function (obj) {
+      for(var i; a = [], len = obj.length; i < len; i += 1) {
+        a[i] = obj[i]
+      }
+      return a
+    }
+  }
+
+  //생성자 함수를 반환한다
+  //이 함수가 새로운 네임스페이스에 할당될 것이다
+  return Constr
+}());
+
+//이 생성자 함수는 다음과 같이 사용한다
+var arr  =  new MYAPP.utilities.Array(obj);
+
+```
+
+**모듈에 전역 변수 가져오기**
+
+- 이 패턴의 흔한 변형 패턴으로는, 모듈을 감싼 즉시 실행 함수에 인자를 전달하는 형태가 있다
+- 보통 전역 변수에 대한 참조 또는 전역 객체 자체를 전달한다. 이렇게 전역 변수를 전달하면 즉시 실행 함수 내에서 지역 변수로 사용할 수 있게 되기 때문에 탐색 작업이 좀더 빨라진다
+
+```javascript
+MYAPP.utilities.module = (function (app, global) {
+  //전역 객체에 대한 참조와
+  //전역 애플리케이션 네임스페이스 객체에 대한 참조가 지역 변수화된다
+})(MYAPP, this);
+```
