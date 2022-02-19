@@ -548,3 +548,209 @@ Sandbox.prototype = {
   3. 필요한 모듈은 배열로도, 개별적인 인자로도 전달할 수 있고, 쓸 수 있는 모듈을 모두 쓰겠다는 의미로 생략할 수도 있다. 이 예제에서는 필요한 기능을다른 파일로부터 로딩하는 것 까지는 구현하지 않았지만, 이러한 선택지도 확실히 고려해보아야 한다
   4. 필요한 모듈을 모두 파악한 다음에는 각 모듈을 초기화한다. 다시 말해 각 모듈을 구현한 함수를 호출한다
   5. 생성자의 마지막 인자를 콜백 함수다. 이 콜백 함수는 맨 마지막에 호출되며, 새로 생성된 인스턴스가 인자로 전달된다. 이 콜백 함수가 실제 사용자의 샌드박스이며 필요한 기능을 모두 갖춘 상태에서 box 객체를 전달받게 된다
+
+## **5.6 스태틱 멤버**
+
+- 스태틱 프로퍼티와 메서드란 인스턴스에 따라 달라지지 않는 프로퍼티와 메서드를 말한다
+- 공개 스태틱 멤버는 클래스의 인스턴스를 생성하지 않고도 사용할 수 있다
+- 비공개 스태틱 멤버는 클래스 사용자에게는 보이지 않지만 클래스의 인스턴스들은 모두 함께 사용할 수 있다
+
+**공개 스태틱 멤버**
+
+- 자바스크립트에는 스태틱 멤버를 표기하는 별도의 문법이 존재하지 않는다. 그러나 생성자에 프로퍼티를 추가함으로써 클래스 기반 언어와 동일한 문법을 사용할 수 있다
+- 다음 예제는 Gadget이라는 생성자에 스태틱 메서드인 isShiny()와 일반적인 인스턴스 메서드인 setPrice()를 정의한 것이다
+- isShiny()는 특정 Gadget객체를 필요로 하지 않기 때문에 스태틱 메서드라 할 수 있다
+
+  ```javascript
+  //생성자
+  var Gadget = function () {};
+
+  //스태틱 메서드
+  Gadget.isShiny = function () {
+    return "you get";
+  };
+
+  //프로토타입에 일반적인 함수를 추가했다
+  Gadget.prototype.setPrice = function (price) {
+    this.price = price;
+  };
+
+  //메서드 호출
+  //1. 스태틱 메서드를 호출하는 방법
+  Gadget.isShiny(); //"you bet"
+
+  //2. 인스턴스를 생성한 후 메서드를 호출하는 방법
+  var iphone = new Gadget();
+  iphone.setPrice(500);
+
+  //인스턴스 메서드를 스태틱 메서드와 같은 방법으로 호출하면 동작하지 않는다
+  //스태틱 메서드 역시 인스턴스인 iphone 객체를 사용해 호출하면 동작하지 않는다
+  typeof Gedget.setPrice; // "undefined"
+  typeof iphone.isShint; // "undefined"
+  ```
+
+- 스태틱한 방법으로도, 스태틱하지 않은 방법으로도 호출될 수 있는 어떤 메서드를 호출 방식에 따라 살짝 다르게 동작하게 하는 예제
+- 메서드가 어떻게 호출되었는지 판별하기 위해서 instanceof 연산자를 활용한다
+
+  ```javascript
+  //생성자
+  var Gadget = function (price) {
+    this.price = price;
+  };
+  //스태틱 메서드
+  Gadget.isShiny = function () {
+    //다음은 항상 동작한다
+    var meg = "you bet";
+
+    if (this instanceof Gadget) {
+      //다음은 스태틱하지 않은 방식으로 호출되었을 때만 동작한다
+      msg += ", is costs $" + this.price + "!";
+    }
+    return msg;
+  };
+
+  //프로토타입에 일반적인 메서드를 추가한다
+  Gedget.prototype.isShiny = function () {
+    return Gadget.isShiny.call(this);
+  };
+
+  //스태틱 메서드 호출 테스트
+  Gadget.isShiny(); //"tou bet"
+  ```
+
+  - 인스턴스를 통해 스태틱하지 않은 방법으로 호출해보면 다음과 같은 결과가 나온다
+
+  ```javascript
+  var a = new Gadget("499.99");
+  a.isShiny(); //"you bet, it costs $499.99!"
+  ```
+
+**비공개 스태틱 멤버**
+
+- 비공개 스태틱 멤버란 다음과 같은 의미를 가진다
+  1. 동일한 생성자 함수로 생성된 객체들이 공유하는 멤버다
+  2. 생성자 외부에서는 접근할 수 없다
+- Gadget 생성자 안에 counter라는 비공개 스태틱 프로퍼티를 구현하는 예제를 살펴보자
+- 먼저 클로저 함수를 만들고, 비공개 멤버를 이 함수로 감싼 후, 이 함수를 즉시 실행한 결과로 새로운 함수를 반환하게 한다. 반환되는 함수는 Gadget 변수에 할당되어 새로운 생성자가 될 것이다
+
+  ```javascript
+  var Gedget = (function () {
+    //스태틱 변수/프로퍼티
+    var counter = 0;
+
+    //생성자의 새로운 구현 버전을 반환한다
+    return function () {
+      console.log((counter += 1));
+    };
+  })(); //즉시 실행한다
+
+  //테스트해보면 모든 인스턴스가 동일한 counter값을 공유하고 있다는 것을 알 수 있다
+  var g1 = new Gadget(); //1이 출력된다
+  var g2 = new Gadget(); //2이 출력된다
+  var g3 = new Gadget(); //3이 출력된다
+  ```
+
+- 공개/비공개 스태틱 프로퍼티는 상당히 편리하다. 특정 인스턴스에 한정되지 않는 메서드와 데이터를 담을 수 있고 인스턴스별로 매번 재생성되지도 않는다
+
+## **5.7 객체 상수**
+
+- 자바스크립트에는 상수가 없지만 대다수 최신 브라우저 환경에서는 const 문을 통해 상수를 생성할 수 있다
+- 이어질 예제는 다음과 같은 메서드를 제공하는 범용 constant 객체를 구현한 것이다
+
+  1. set(name, value): 새로운 상수를 정의한다
+
+  2. isDefine(name): 특정 이름의 상수가 있는지 확인한다
+
+  3. get(name): 상수의 값을 가져온다
+
+- 이 예제에서는 상수 값으로 원시 데이터 타입만 허용된다. 또한 선언하려는 상수의 이름이 toString이란 hasOwnProperty 등 내장 프로퍼티의 이름과 겹치지 않도록 보장하기 위해 hasOwnProperty()를 사용한 별도의 확인 작업을 거친다. 마지막으로 모든 상수의 이름 앞에 임의로 생성된 접두어를 붙인다
+
+  ```javascript
+  var constant = (function() {
+    var constants = {},
+    ownProp = Object.prototype.hasOwnProperty,
+    allowed = {
+      string:1,
+      number:1,
+      boolean:1
+    },
+    prefix = (Math.random() + "_").slice(2)
+    return {
+      set: function(name, value) {
+        if(this.isDefined(name)) {
+          return fasle
+        }
+        if(!ownProp.call(allowed, typeof value)) {
+          return false
+        }
+        constants[prefix + name] = value
+        return true
+      },
+      isDefined: function(name) {
+        return ownProp.call(canstants, prefix + name)
+      }
+      get: function (name) {
+        if(this.isDefined(name)) {
+          return constants[profix + name]
+        }
+        return null
+      }
+    }
+  }())
+
+  //테스트
+  //1. 이미 정의되었는지 테스트
+  constant.isDefined("maxwidth") //false
+
+  //2. 정의한다
+  constant.set("maxwidth", 480) //true
+
+  //3. 정의되었는지 다시 확인한다
+   constant.isDefined("maxwidth") //true
+
+  //4. 값은 그대로인가?
+  constant.get("maxwidth") //480
+  ```
+
+## **5.8 체이닝 패턴**
+
+- 체이닝 패턴이란 객체에 연쇄적으로 메서들르 호출할 수 있도록 하는 패턴이다. 즉 여러가지 동작을 수행할 때, 먼저 수행한 동작의 반환 값을 변수에 할당한 후 다음 작업을 할 필요가 없기 때문에, 호출을 여러 줄에 걸쳐 쪼개지 않아도 된다
+  ```javascript
+  myobj.method1("hello").method2().method3("world").method4();
+  ```
+- 만약 메서드에 의미있는 반환 값이 존재하지 않는다면, 현재 작업중인 객체 인스턴스인 this를 반환하게 한다. 이렇게 하면 객체의 사용자는 앞선 메서드에 이어 다음 메서드를 바로 호출할 수 있다
+
+  ```javascript
+  var obj = {
+    value: 1,
+    increment: function () {
+      this.value += 1;
+      return this;
+    },
+    add: function () {
+      this.value += v;
+      return this;
+    },
+    shout: function () {
+      alert(this.value);
+    },
+  };
+
+  //메서드 체이닝 호출
+  obj.increment().add(3).shout(); //5
+  ```
+
+**체이닝 패턴의 장단점**
+
+- 장점
+  1. 코드량이 줄고 코드가 좀더 간결해져 거의 하나의 문장처럼 읽히게 할수 있다
+  2. 체이닝 패턴을 통해 함수를 쪼개는 방법을 생각하게 되고, 혼자서 너무 많은 일을 처리하려는 함수보다는 좀더 작고 특화된 함수를 만들게 된다. 장기적으로는 이런방법을 통해 유지보수가 개선된다
+- 단점
+  1. 디버깅하기가 어렵다. 코드의 어느 라인에서 에러가 발생했는지 알아내더라도, 그 라인에서 수행하는 일이 너무 많을 수 잇기 때문이다
+- 이 패턴은 널리 사용된다
+
+  - DOM API를 들여다보면, DOM요소들도 체이닝 패턴을 사용하는 경향이 있음을 알 수 있다
+
+  ```javascript
+  document.getElementByTagName("head")[0].appendChild(newnode);
+  ```
