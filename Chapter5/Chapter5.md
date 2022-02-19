@@ -118,3 +118,157 @@ var myFunction = function () {
   2. 함수의 첫머리에 의존 관계가 선언되기 때문에 의존 관계를 찾아내고 이해하기가 쉽다
   3. dom과 같은 지역 변수를 YAHOO와 같은 전역 변수보다 언제나 더 빠르며 YAHOO.util.Dom처럼 전역 변수의 중첩 프로퍼티와 비교하면 더 말할 것도 없다. 의존 관계 선언 패턴을 잘 지키면 함수 안에서 전역 객체 판별을 단 한 번만 수행하고, 이 다음부터는 지역변수를 사용하기 때문에 훨씬 빠르다
   4. YUI 컴프레서나 구글 클로서 등 고급 압축 도구는 지역 변수명에 대해서는 event를 A라는 글자 하나로 바꾸는 식으로 축약해 코드를 줄여준다. 하지만 전역 변수명 변경은 위험하기 때문에 축약하지 않는다
+
+### **5.3 비공개 프로퍼티와 메서드**
+
+- 자바스크립트에서는 private, protected, public 같은 프로퍼티와 메서드를 나타내는 별도의 문법이 없다. 객체의 모든 멤버는 public, 즉 공개되어 있다
+- 생성자 함수를 사용해 객체를 생성할 때도 마찬가지로 모든 멤버가 공개된다
+
+**비공개(private)멤버**
+
+- 비공개 멤버에 대한 별도의 문법은 없지만 클로저를 사용해서 구현할 수 있다. 생성자 함수 안에서 클로저를 만들면, 클로저 유효범위 안의 변순는 생성자 함수 외부에 노출되지 않지만 객체의 공개 메서드 안에서는 쓸 수 있다. 즉 생성자에서 객체를 반환할 때 객체의 메서드를 정의하면, 이 메서드 안에서는 비공개 변수에 접근할 수 있다
+
+  ```javascript
+  function Gadget() {
+    //비공개 멤버
+    var name = "iPod";
+    //공개된 함수
+    this.getName = function () {
+      return name;
+    };
+  }
+  var toy = new Gadget();
+  //'name'은 비공개이므로 undefined가 출력된다
+  console.log(toy.name); //undefined
+
+  //공개 메서드에서는 'name'에 접근할 수 있다
+  console.log(toy.getName); // 'iPod'
+  ```
+
+**특권(privileged)메서드**
+
+- 특권 메서드라는 개념은 특정 문법과는 관련이 없다.단지 비공개 멤버에 접근권한을 가진 공개 메서드를 가리키는 이름을 뿐이다
+
+**비공개 멤버의 허점**
+
+- 비공개 멤버를 유지하는게 관건이라면, 다음과 같은 경우에 대해서 신경을 써야 한다
+  1. 파이어폭스의 초기 버전 중 일부는 eval()함수에 두 번째 매개변수를 전달할 수 있게 되어있따. 이 매개변수는 함수의 비공개 유효범위를 들여다볼 수 있게 해주는 컨텍스트 객체다. 현재 널리 사용되는 브라우저에는 적용되지 않는 사례들이다
+  2. 특권 메서드에서 비공개 변수의 값을 바로 반환할 경우 이 변수가 객체나 배열이라면 값이 아닌 참조가 반환되기 때문에 , 외부 코드에서 비공개 변수 값을 수정할 수 있다
+
+```javascript
+function Gadget() {
+  //비공개 멤버
+  var specs = {
+    screen_width: 320,
+    screen_hight: 480,
+    color: "white",
+  };
+
+  //공개 함수
+  this.getSpecs = function () {
+    return specs;
+  };
+}
+```
+
+- 여기서 getSpec()메서드가 specs객체에 대한 참조를 반환한다는게 문제다
+- 이를 해결하는 하나의 방법은 getSpecs()에서 아예 새로운 객체를 만들어 사용자에게 쓸모있을 만한 데이터 일부만 담아 반환하는 것이다. 이것을 **최조 권한의 법칙**이라고도 한다
+- 모든 데이터를 넘겨야 한다면 객체를 복사하는 범용 함수를 사용하며 specs 객체의 복사본을 만드는 것도 방법이 될 수 있다
+
+**객체 리터럴과 비공개 멤버**
+
+- 객체 리터럴로 객체를 생성한 경우에 비공개 멤버를 만들기 위해서는 비공개 데이터를 함수로 감싸기만 하면 된다. 따라서 객체 리터럴에서는 익명 즉시 실행 함수를 추가하여 클로저를 만든다
+
+```javascript
+var myobj;
+(function () {
+  //비공개 멤버
+  var name = "my, oh my";
+
+  //공개될 부분을 구현한다
+  //var를 사용하지 않았다는 데 주의하라
+  myobj = {
+    //특권 메서드
+    getName: function () {
+      return name;
+    },
+  };
+})();
+
+myobj.getName(); // "my, oh my"
+```
+
+**프로토타입과 비공개 멤버**
+
+- 생성자를 사용하여 비공개 멤버를 만들 경우, 생성자를 호출하여 새로운 객체를 만들 때마다 비공개 멤버가 매번 재생성 된다는 단점이 있다
+- 이러한 중복을 없애고 메모리를 절약하려면 공통 프로퍼티와 메서드를 생성자의 protoype 프로퍼티에 추가해야 한다. 이렇게 하면 동일한 생성자로 생성한 모든 인스턴스가 공통된 부분을 공유하게 된다
+- 감춰진 비공개 멤버들도 모든 인스턴스가 함께 쓸 수 있다
+- 이를 위해서는 두 가지 패턴, 생성자 함수 내부에서 비공개 멤버를 만드는 패턴과 객체 리터럴로 멤버를 만드는 패턴을 함께 써야한다
+- 그 이유는 prototype 프로퍼티도 결국 객체라서, 객체 리터럴로 생성할 수 있기 때문이다
+
+```javascript
+function Gadget() {
+  //비공개 멤버
+  var name = "iPod";
+  //공개함수
+  this.getName = function () {
+    return name;
+  };
+}
+Gedget.prototype = (function () {
+  //비공개멤버
+  var browser = "Mpbile Webkit";
+  //공개된 프로토타입 멤버
+  return {
+    getBrowser: function () {
+      return browser;
+    },
+  };
+})();
+
+var toy = new Gadget();
+console.log(toy.getName()); //객체 인스턴스의 특권 메서드
+console.log(tpy.getBrowser()); //프로토타입의 특권 메서드
+```
+
+\*_비공개 함수를 공개 메서드로 노출시키는 방법_
+
+- 노출패턴(revelation parrern)은 비공개 메서드를 구현하면서 동시에 공개 메서드로도 노출하는 것을 말한다
+- 객체의 모든 기능이 객체가 수행하는 작업에 필수불가결한 것들이라서 최대한의 보호가 필요한데, 동시에 이 기능들의 융용성 때문에 공개적인 접근도 허용하고 싶은 경우가 있을 수 있다
+- 이럴때 객체 리터럴 안에서 비공개 멤버를 만드는 패턴을 사용하면 된다
+
+```javascript
+var myarray;
+(function () {
+  var astr = "[object Array]",
+    toString = Object.prototype.toString;
+
+  function isArray(a) {
+    return toString.call(a) === astr;
+  }
+  function indexOf(haystack, needle) {
+    var i = 0;
+    max = haystack.length;
+    for (; i < max; i += 1) {
+      if (haystack[i] === needle) {
+        return i;
+      }
+      return -1;
+    }
+  }
+  myarray = {
+    isArray: isArray,
+    indexOf: indexOf,
+    inArray: indexof,
+  };
+})();
+
+//테스트
+myarray.isArray([1, 2]); // true
+myarray.isArray({ 0: 1 }); //false
+myarray.indexOf(["a", "b", "z"], "z"); // 2
+myarray.inArray(["a", "b", "z"], "z"); // 2
+```
+
+- 즉시 실행 함수의 마지막 부분을 보면, 공개적인 접근을 허용해도 괜찮겠다고 결정한 기능들이 myarray 객체에 채워진다
+- 이제 공개된 메서드인 indexOf()에 예기치 못한 일이 일어나더라도, 비공개 함수인 indexOf()는 안전하게 보혿괴기 때문에 inArray()는 계속해서 잘 동작할 것이다
