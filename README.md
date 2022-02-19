@@ -10,7 +10,7 @@
 
 ### [Chapter5. 객체 생성 패턴](./Chapter5/Chapter5.md)
 
-### Chapter6. 코드 재사용 패턴
+### [Chapter6. 코드 재사용 패턴](./Chapter6/Chapter6.md)
 
 ### Chapter7. 디자인 패턴
 
