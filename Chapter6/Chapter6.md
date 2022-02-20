@@ -225,3 +225,78 @@
 
 - 모든 갹체가 실제로 동일한 프로토타입을 공유하게 되므로 프로토타입 체인 검색은 짧고 간단해진다
 - 그러나 상속 체인의 하단 어딘가에 있는 자식이나 손자가 프로토타입을 수정할 경우, 모든 부모와 손자뻘의 객체에 영향을 미친다는 단점이 있다
+
+## **6.7 클래스 방식의 상속패턴 #5 - 임시 생성자**
+
+- 다음 패턴은 프로토타입 체인의 이점은 유지하면서, 동일한 프로토타입을 공유할 때의 문제를 해결하기 위해 부모와 자식의 프로토타입 사이에 직접적인 링크를 끊는다
+- 이 패턴은 클래스 방식의 첫 번째 패턴은 기본 패턴과 약간 다르게 동작한다. 여기서는 자식이 프로토타입의 프로퍼티만을 물려받기 때문이다
+
+  ```javascript
+  function inherit(C, P) {
+    var F = function () {};
+    F.prototype = P.prototype;
+    C.prototype = new F();
+  }
+  ```
+
+- 이 패턴에 따르면 부모 생성자에서 this에 추가한 멤버는 상속되지 않는다
+- kid.say()에 접근하면 new Child()에서는 찾을 수 없기 때문에 프로토타입 체인을 따라 탐색이 시작된다. new F()역시 이 메서드를 갖고 있지 않다. new Parent()는 이 메서드를 갖고 있다. Parent()를 상속하는 모든 생성자와 이를 통해 생성되는 모든 객체들은 똑같이 이 지점에서 이 메서드를 사용하게 된다. 즉, 메모리상의 위치는 동일하다
+
+**상위 클래스 저장**
+
+- 이 패턴을 기반으로 하여, 부모 원본에 대한 참조를 추가할 수도 있다. 다른 언어에서 상위 클래스에 대한 접근 경로를 가지는 것과 같은 기능으로, 경우에 따라 매우 편리하게 쓸 수 있다
+- 이 프로퍼티는 uber라고 부를 것이다
+
+  ```javascript
+  function inherit(C, P) {
+    var F = function () {};
+    F.prototype = P.prototype;
+    C.prototype = new F();
+    C.uber = P.prototype;
+  }
+  ```
+
+  **생성자 포인터 생성**
+
+- 나중을 위해 생서앚 함수를 가리키는 포인터를 재설정하는 것을 추가해보자
+- 생성자 포인터를 재설정하지 않으면 모든 자식 객체들의 생성자는 Parent()로 지정돼 있을 것이고, 이런 상황은 유용성이 떨어진다
+
+  ```javascript
+  //부모와 자식을 두고 상속관계를 만든다
+  function Parent() {}
+  function Child() {}
+  inherit(Child, Parent);
+
+  //생성자를 확인해본다
+  var kid = new Child();
+  kid.constructor.name; //'Parent'
+  kid.constructor === Parent; //true
+  ```
+
+- constructor 프로퍼티는 자주 사용되진 않지만 런타임 객체 판별에 유용하다. 거의 정보성으로만 사용되는 프로퍼티이기 때문에, 우너하는 생성자 함수를 가리키도록 재설정해도 기능에는 영향을 미치지 않는다
+- 클래스 방식의 상속 패턴을 완결하는 최종버전의 예시
+
+  ```javascript
+  function inherit(C, P) {
+    var F = function () {};
+    F.prototype = P.prototype;
+    C.prototype = new F();
+    C.uber = P.prototype;
+    C.prototype.constructor = C;
+  }
+  ```
+
+- 최종버전데 대한 일반적인 최적화 방안은 상속이 필요할 때마다 임시(프록시)생성자가 생성되지 않게 하는 것이다. 임시 생성자는 한 번만 만들어주고 임시 생성자의 프로토타입만 변경해도 충분하다
+- 즉시 실행 함수를 활용하면 프록시 함수를 클로저 안에 지정할 수 있다
+
+  ```javascript
+  var inherit = function () {
+    var F = function () {};
+    return function (C, P) {
+      F.prototype = P.prototype;
+      C.prototype = new F();
+      C.uber = P.prototype;
+      C.prototype.constructor = C;
+    };
+  };
+  ```
