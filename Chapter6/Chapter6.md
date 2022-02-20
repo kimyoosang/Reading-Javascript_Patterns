@@ -444,3 +444,47 @@
   ```
 
 - Object.create()은 두 번째 선택적 매개변수로 객체를 받는다. 전달된 객체의 프로퍼티는,반환되는 child 객체 자신의 프로퍼티로 추가된다. 한번의 메서드 호출로 child 객체의 상속과 정의가 가능하므로 편리하게 쓸 수 있다
+
+## **6.10 프로퍼티 복사를 통한 상속 패턴**
+
+- 프로토타입을 활용한 또다른 상속패턴을 살펴보자
+- 프로퍼티 복사를 통한 상속 패턴은 객체가 다른 객체으 기능을 단순히 복사를 통해 가져온다. extend()라는 견본 함수를 통해 구현 예시를 살펴보자
+  ```javascript
+  function extend(parent, child) {
+    var i;
+    child = child || {};
+    for (i in parent) {
+      if (paren.hasOwnProperty(i)) {
+        child[i] = parent[i];
+      }
+    }
+    return child;
+  }
+  ```
+- 부모의 멤버들에 대해 루프를 돌면서 자식에 복사한다.두 번째 매개변수인 child는 생략 가능하다. 인자가 생략되면 상속을 통해 기존 객체의 기능이 확장되는 대신, 새로운 객체가 생성, 반환된다
+- 이러한 구현을 '얕은 복사'라고도 한다. 반대로 깊은 복사란, 복사하려는 프로퍼티가 객체나 배열인지 호가인해보고, 객체 또는 배열이면 중첩된 프로퍼티까지 재귀적으로 순회하여 복사하는 것을 말한다. 자바스크립트에서 객체는 참조만 전달되기 때문에 얕은 복사를 통해 상속을 실행한 경우, 자식 쪽에서 객체 타입인 프로퍼티 값을 수정하면 부모의 프로퍼티도 수정되어 버린다
+- 깊은 복사를 수행하는 버전의 extend()는 다음과 같다
+
+  ```javascript
+  function extendDeep(parent, child) {
+    var i,
+      toStr = Object.prototype.toString,
+      asrt = "[object Array]";
+
+    child = child || {};
+
+    for (i in parent) {
+      if (parent.hasownPeoperty(i)) {
+        if (typeof parent[i] === "object") {
+          child[i] = toStr.call(parent[i]) === astr ? [] : {};
+          extendDeep(parent[i], child[i]);
+        } else {
+          child[i] = parent[i];
+        }
+      }
+    }
+    return child;
+  }
+  ```
+
+- 이 패턴은 프로토타입과 전혀 관련이 없다는 점에 주의하라. 그저 객체와 프로퍼티만을 다루고 있다
