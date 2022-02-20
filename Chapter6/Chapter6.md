@@ -63,3 +63,112 @@
 - 단점
   1. 부모 객체의 this에 추가된 객체 자신의 프로퍼티와 프로토타입 프로퍼티를 모두 물려받게 된다. 대부분의 경우 객체 자신의 프로퍼티는 특정 인스턴스에 한정되어 재사용 할 수 없기 때문에 필요가 없다
   2. 범용 inherit() 함수는 인자를 처리하지 못하는 문제도 가지고 있다. 즉 자식 생성자에 인자를 넘겨도 부모 생서앚에게 전달하지 못한다. 자식 객체가 부모 생성자에 인자를 전달하는 방법도 있겠지만, 이 방법은 자식 인스턴스를 생성할 때마다 상속을 실행해야하기 때문에, 결국 부모 객체를 계속해서 재생성하는 셈이고, 따라서 매우 비효율적이다
+
+## **6.4. 클래스 방식의 상속 패턴 #2 - 생성자 빌려쓰기**
+
+- 이번에 살펴볼 패턴은 자식에서 부모로 인자를 전달하지 못했던 #1의 문제를 해결한다
+- 이 패턴은 부모 생성자 함수의 this에 자식 객체를 바인딩한 다음, 자식 생성자가 받은 인자들을 모두 넘겨준다
+  ```javascript
+  function Child(a, c, b, d) {
+    Parent.apply(this, arguments);
+  }
+  ```
+- 이렇게 하면 부모 생성자 함수 내부의 this에 추가된 프로퍼티만 물려받게 된다. 프로토타입에 추가된 멤버는 상속되지 않는다
+- 생성자 빌려쓰기 패턴을 사용하면, 자식 객체는 상속된 멤버의 복사본을 받게 된다. 패턴 #1 처럼 자식 객체가 상속된 멤버의 참조를 물려받은 것과는 다르다
+- 예제를 통해 차이점을 확인해보자
+
+  ```javascript
+  //부모생성자
+  function Article() {
+    this.tags = ["js", "css"];
+  }
+  var article = new Article();
+
+  //클래스 방식의 패턴 #1을 사용해 article 객체를 상속하는 blog 객체를 생성한다
+  function BlogPost() {}
+  BlogPost.prototype = article;
+  var blog = new BlogPost();
+  // 여기서는 이미 인스턴스가 존재하기 때문에 'new Article'을 쓰지 않았다
+
+  //생성자 빌려쓰기 패턴을 사용해 article을 상속하는 page 객체를 생성한다
+  function StaticPage() {
+    Article.call(this);
+  }
+  var page = new StaticPage();
+
+  alert(article.hasOwnProperty("tags")); //true
+  alert(blog.hasOwnProperty("tags")); //false
+  alert(page.hasOwnProperty("tags")); //true
+  ```
+
+- 기본 패턴을 적용한 blog객체는 tags를 자신의 프로퍼티로 가진 것이 아니라 프로토타입을 통해 접근하기 때문에 hasOwnProperty()로 확인하면 false가 반환된다
+- 그러나 생성자만 빌려쓰는 방식으로 상속받은 page 객체는 부모의 tags 멤버에 대한 참조를 얻는 것이 아니라 복사존을 얻게 되므로 자기 자신의 tags 프로퍼티를 가진다
+- 상속된 tags 프로퍼티를 수정할 때의 차이점을 살펴보자
+
+  ```javascript
+  blog.tags.push("html");
+  page.tags.push("php");
+  alert(article.tags.join(", ")); //'js, css, html'
+  ```
+
+- blog객체가 tags 프로퍼티를 수정하면 동시에 부모의 멤버도 수정된다
+- 그러나 page.tags에 적용된 변경사항은 부모인 article에 영향을 미치지 않는다. page.tags는 상속 관정에서 별개로 생성된 복사본이기 때문이다
+
+**프로토타입 체인**
+
+- 앞서 사용했던 Parent()와 Child() 생성자에 이 패턴을 적용했을 때 프로토타입 체인은 어떤 모습이 되는지 살펴보자
+
+  ```javascript
+  //부모 생성자
+  function Parent(name) {
+    this.name = name || "Adam";
+  }
+
+  //프로토타입에 기능을 추가한다
+  Parent.prototype.say = function () {
+    return this.name;
+  };
+
+  //자식 생성자
+  function Child(name) {
+    Parent.apply(this, arguments);
+  }
+
+  var kid = new Child("Patrick");
+  kid.name; //'Patrick'
+  typeof kid.say; //undefined
+  ```
+
+- 새로 생성된 Child 객체와 Parent 사이에 링크는 존재하지 않는다. 이 패턴을 적용하면 kid는 자기 자신의 name 프로퍼티를 가지지만 say() 메서드는 상속받을 수 ㅇ벗다
+- 여기서의 상속은 부모가 가진 자신만의 프로퍼티를 자식의 프로퍼티로 복사해주는 일회성 동작이며 **proto** 라는 링크는 유지되지 않는다
+
+**생성자 빌려쓰기를 적용한 다중 상속**
+
+- 생성자 빌려쓰기 패턴을 사용하면, 생성자를 하나 이상 빌려쓰는 다중 상속을 구현할 수 있다
+
+  ```javascript
+  function Cat() {
+    this.legs = 4;
+    this.say = function () {
+      return "meaowww";
+    };
+  }
+  function Bird() {
+    this.wings = 2;
+    this.fly = true;
+  }
+  function CatWings() {
+    Cat.apply(this);
+    Bird.apply(this);
+  }
+
+  var jane = new CatWings();
+  console.dir(jsne);
+  ```
+
+**생성자 빌려쓰기 패턴의 장단점**
+
+- 장점
+  1. 무보 생성자 자신의 멤버에 대한 복사존을 가져올 수 있다. 덕분에 자식이 실수로 부모의 프로퍼티를 덮어쓰는 위협을 방지할 수 있다
+- 단점
+  1. 프로토타입이 전혀 상속되지 않는다는 한계가 있다. 재사용되는 메서드와 프로퍼티는 인스턴스 별로 재생성되지 않도록 프로토타입에 추가해야 하기 때문이다
