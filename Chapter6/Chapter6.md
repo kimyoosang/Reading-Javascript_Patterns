@@ -300,3 +300,86 @@
     };
   };
   ```
+
+## **6.8 Klass**
+
+- 많은 자바스크립트 라입러리가 새로운 문법 설탕을 도입하여 클래스를 흉내낸다. 각 구현은 다르지만 공통점을 뽑아본다면 다음과 같은 것들이 있다
+  1. 클래스의 생성자라고 할 수 있는 메서드에 대한 명명 규칙이 존재한다. 이 메서드들은 자동으로 호출되며, initialize, \_init 등의 이름을 가진다
+  2. 클래스는 다른 클래스로부터 상속된다
+  3. 자식 클래스 내부에서 부모 클래스에 접근할 수 있는 경로가 존재한다
+- 자바스크립트에서 클래스를 모방한 구현 예제
+
+  ```javascript
+  var Man = klass(null, {
+    __construct: function (what) {
+      console.log("Man's constructor");
+    },
+    getName: function () {
+      return this.name;
+    },
+  });
+  ```
+
+- 여기서 문법 설탕은 klass()라는 이름의 함수 형태로 등장한다
+- 이 함수는 두 개의 매배변수를 맏는다. 하나는 상속할 부모 클래스이고, 다른 하나는 객체 리터럴 형식으로 표기된 새로운 클래스의 구현이다
+- 앞선 예제에서는 Man이라는 새로운 클래스가 생성되었고 아무 것도 상속 받지 않는다. Man클래스는 \_\_contruct안에서 생성된 자신만의 프로퍼티인 name과 함게 getName()이라는 메서드를 가진다
+- 이 클래스를 상속받아 SuperMan클래스를 만들어보자
+
+  ```javascript
+  var SupterMan = klass(Man, {
+    __construct: function (what) {
+      console.log("SuperMan's constructor");
+    },
+    getName: function () {
+      var name = SuperMan.uber.getName.call(this);
+      return "I am " + name;
+    },
+  });
+  ```
+
+- klass()에 전달되는 첫 번째 매개변수는 상속받을 Man 클래스다
+- SuperMan의 uber 스태틱 프로퍼티를 사용하여 부모 클래스의 getName()함수를 먼저 호출했다
+- 마지막으로 klass()함수가 어떤 식으로 구현될 수 있는지 살펴보자
+
+  ```javascript
+  var klass = function (Parent, props) {
+    var Child, f, i;
+
+    //1
+    //새로운 생성자
+    Child = function () {
+      if (Child.uber && Child.uber.hasOwnProperty("__contruct")) {
+        Child.uber.__contruct.apply(this, arguments);
+      }
+      if (Child.prototype.hasOwnPtoperty("__construct")) {
+        Child.prototype.__contruct.apply(this, arguments);
+      }
+    };
+
+    //2
+    //2상속
+    Parent = Parent || Object;
+    F = function () {};
+    F.prototype = Parent.prototype;
+    Child.prototype = new F();
+    Child.uber = Parent.prototype;
+    Child.prototype.contructor = Child;
+
+    //3
+    //구현 메서드를 추가한다
+    for (i in props) {
+      if (props.hasOwnProperty(i)) {
+        Child.prototype[i] = props[i];
+      }
+    }
+
+    //'클래스'를 반환한다
+    return Child;
+  };
+  ```
+
+- klass()구현은 세 개의 흥미로운 부분으로 나뉜다
+  1. Child()생성자 함수가 생성된다. 마지막에 이 함수가 반환되어 클래스로 사용될 것이다. **construct 메서드가 있다면 이 함수안에서 호출된다. 그 전에 부모의 **construct가 있다면 uber 스태틱 프로퍼티를 사용하여 호출된다. Man 클래스처럼 별도의 부모클래스 없이 Object를 상속했다면 uber라는 프로퍼티는 정의되어 있지 않을 수 있다
+  2. 두 번째 부분은 상속을 처리한다. 바로 앞 절에서 다룬 클래스 방식의 최정 버전을 사용했다. 유일하게 새로운 점은 상속받을 클래스에 Parent가 존재하지 않을 경우 Object가 지정되도록 한것이다
+  3. 마지막 부분에서는 루프를 돌명서 클래스를실제로 정의하는 구현 메서드들을 Child의 프로토타입에 추가한다
+- 이런 패턴은 피하는 것이 좋다. 기술적으로는 언어에 존재하지 않는 혼란스러운 개념들을 온통 끌고 들어오기 때문이다. 여러분이나 여러분의 팀이 클래스 개념에는 익숙하지만 프로토타입 개념은 낯설게 생각할 경우 연구해 볼 만 하다
