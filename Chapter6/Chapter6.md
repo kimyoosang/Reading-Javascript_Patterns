@@ -300,3 +300,264 @@
     };
   };
   ```
+
+## **6.8 Klass**
+
+- 많은 자바스크립트 라입러리가 새로운 문법 설탕을 도입하여 클래스를 흉내낸다. 각 구현은 다르지만 공통점을 뽑아본다면 다음과 같은 것들이 있다
+  1. 클래스의 생성자라고 할 수 있는 메서드에 대한 명명 규칙이 존재한다. 이 메서드들은 자동으로 호출되며, initialize, \_init 등의 이름을 가진다
+  2. 클래스는 다른 클래스로부터 상속된다
+  3. 자식 클래스 내부에서 부모 클래스에 접근할 수 있는 경로가 존재한다
+- 자바스크립트에서 클래스를 모방한 구현 예제
+
+  ```javascript
+  var Man = klass(null, {
+    __construct: function (what) {
+      console.log("Man's constructor");
+    },
+    getName: function () {
+      return this.name;
+    },
+  });
+  ```
+
+- 여기서 문법 설탕은 klass()라는 이름의 함수 형태로 등장한다
+- 이 함수는 두 개의 매배변수를 맏는다. 하나는 상속할 부모 클래스이고, 다른 하나는 객체 리터럴 형식으로 표기된 새로운 클래스의 구현이다
+- 앞선 예제에서는 Man이라는 새로운 클래스가 생성되었고 아무 것도 상속 받지 않는다. Man클래스는 \_\_contruct안에서 생성된 자신만의 프로퍼티인 name과 함게 getName()이라는 메서드를 가진다
+- 이 클래스를 상속받아 SuperMan클래스를 만들어보자
+
+  ```javascript
+  var SupterMan = klass(Man, {
+    __construct: function (what) {
+      console.log("SuperMan's constructor");
+    },
+    getName: function () {
+      var name = SuperMan.uber.getName.call(this);
+      return "I am " + name;
+    },
+  });
+  ```
+
+- klass()에 전달되는 첫 번째 매개변수는 상속받을 Man 클래스다
+- SuperMan의 uber 스태틱 프로퍼티를 사용하여 부모 클래스의 getName()함수를 먼저 호출했다
+- 마지막으로 klass()함수가 어떤 식으로 구현될 수 있는지 살펴보자
+
+  ```javascript
+  var klass = function (Parent, props) {
+    var Child, f, i;
+
+    //1
+    //새로운 생성자
+    Child = function () {
+      if (Child.uber && Child.uber.hasOwnProperty("__contruct")) {
+        Child.uber.__contruct.apply(this, arguments);
+      }
+      if (Child.prototype.hasOwnPtoperty("__construct")) {
+        Child.prototype.__contruct.apply(this, arguments);
+      }
+    };
+
+    //2
+    //2상속
+    Parent = Parent || Object;
+    F = function () {};
+    F.prototype = Parent.prototype;
+    Child.prototype = new F();
+    Child.uber = Parent.prototype;
+    Child.prototype.contructor = Child;
+
+    //3
+    //구현 메서드를 추가한다
+    for (i in props) {
+      if (props.hasOwnProperty(i)) {
+        Child.prototype[i] = props[i];
+      }
+    }
+
+    //'클래스'를 반환한다
+    return Child;
+  };
+  ```
+
+- klass()구현은 세 개의 흥미로운 부분으로 나뉜다
+  1. Child()생성자 함수가 생성된다. 마지막에 이 함수가 반환되어 클래스로 사용될 것이다. **construct 메서드가 있다면 이 함수안에서 호출된다. 그 전에 부모의 **construct가 있다면 uber 스태틱 프로퍼티를 사용하여 호출된다. Man 클래스처럼 별도의 부모클래스 없이 Object를 상속했다면 uber라는 프로퍼티는 정의되어 있지 않을 수 있다
+  2. 두 번째 부분은 상속을 처리한다. 바로 앞 절에서 다룬 클래스 방식의 최정 버전을 사용했다. 유일하게 새로운 점은 상속받을 클래스에 Parent가 존재하지 않을 경우 Object가 지정되도록 한것이다
+  3. 마지막 부분에서는 루프를 돌명서 클래스를실제로 정의하는 구현 메서드들을 Child의 프로토타입에 추가한다
+- 이런 패턴은 피하는 것이 좋다. 기술적으로는 언어에 존재하지 않는 혼란스러운 개념들을 온통 끌고 들어오기 때문이다. 여러분이나 여러분의 팀이 클래스 개념에는 익숙하지만 프로토타입 개념은 낯설게 생각할 경우 연구해 볼 만 하다
+
+## **6.9 프로토타입을 활용한 상속**
+
+- 클래스를 사용하지 않는 '새로운' 방식의 패턴을 살펴보자
+- 이 패턴에서는 클래스를 찾아볼 수 없다. 객체가 객체를 상속받는다. 재사용하려는 객체가 하나 있고, 또다른 객체를 만들어 이 첫 번째 객체의 기능을 가져온다고 생각하면 된다
+
+  ```javascript
+  //상속해줄 객체
+  var parent = {
+    name: "Papa",
+  };
+  //새로운 객체
+  var child = object(parent);
+
+  //테스트
+  alert(child.name); //'Papa'
+  ```
+
+- 이 코드를 보면, 객체 리터럴로 생성한 parent라는 객체가 있고, parent와 동일한 프로퍼티와 메서드를 가지는 또라느 객체 child를 생성하려 한다. child객체는 object()라는 함수를 통해 생성했다. 이 함수는 자바스크립트에는 존재하지 않는다
+- 클래스 방식의 최종버전과 비슷하게, 먼저 빈 임시 생성자 함수 F()를 사용한다. 그런 다음 F()의 프로토타입에 parent 객체를 지정한다. 마지막으로 임시 생성자의 새로운 인스턴스를 반환한다
+
+  ```javascript
+  function object(o) {
+    function F() {}
+    F.prototype = o;
+    return new F();
+  }
+  ```
+
+**논의**
+
+- 프로토타입을 활용한 상속 패턴에서 부모가 객체 리터럴로 생성되어야만 하는 것은 아니다. 생성자 함수를 통해 부모를 생성할 수도 있다. 이 경우 부모 객체 자신의 프로퍼티와 생성자 함수의 프로토타입에 포함된 프로퍼티가 모두 상속된다는 점도 유의해야 한다
+
+  ```javascript
+  //부모 생성자
+  function Person() {
+    //부모 생성자 자신의 프로퍼티
+    this.name = "Adam";
+  }
+  //프로토타입에 추가된 프로퍼티
+  Person.prototype.getName = function () {
+    return this.name;
+  };
+  //Person 인스턴스를 생성한다
+  var papa = new Person();
+  //이 인스턴스를 상속한다
+  var kid = object(papa);
+
+  //부모 자기 자신의 프로퍼티와 프로토타입의 프로터피가 모두 상송되었는지 확인
+  kid.getName(); //"Adam"
+  ```
+
+**ECMAScript 5의 추가사항**
+
+- ECMAScript 5 에서는 프로토타입을 활용한 상속 패턴이 언어의 공식 요소가 되었다. Object.create()가 이 패턴을 구현하고 있다. 즉 object()와 같은 함수를 따로 만들지 않아도 이 기능이 언어에 내장된다
+
+  ```javascript
+  var child = object.create(parent);
+  ```
+
+- Object.create()은 두 번째 선택적 매개변수로 객체를 받는다. 전달된 객체의 프로퍼티는,반환되는 child 객체 자신의 프로퍼티로 추가된다. 한번의 메서드 호출로 child 객체의 상속과 정의가 가능하므로 편리하게 쓸 수 있다
+
+## **6.10 프로퍼티 복사를 통한 상속 패턴**
+
+- 프로토타입을 활용한 또다른 상속패턴을 살펴보자
+- 프로퍼티 복사를 통한 상속 패턴은 객체가 다른 객체으 기능을 단순히 복사를 통해 가져온다. extend()라는 견본 함수를 통해 구현 예시를 살펴보자
+  ```javascript
+  function extend(parent, child) {
+    var i;
+    child = child || {};
+    for (i in parent) {
+      if (paren.hasOwnProperty(i)) {
+        child[i] = parent[i];
+      }
+    }
+    return child;
+  }
+  ```
+- 부모의 멤버들에 대해 루프를 돌면서 자식에 복사한다.두 번째 매개변수인 child는 생략 가능하다. 인자가 생략되면 상속을 통해 기존 객체의 기능이 확장되는 대신, 새로운 객체가 생성, 반환된다
+- 이러한 구현을 '얕은 복사'라고도 한다. 반대로 깊은 복사란, 복사하려는 프로퍼티가 객체나 배열인지 호가인해보고, 객체 또는 배열이면 중첩된 프로퍼티까지 재귀적으로 순회하여 복사하는 것을 말한다. 자바스크립트에서 객체는 참조만 전달되기 때문에 얕은 복사를 통해 상속을 실행한 경우, 자식 쪽에서 객체 타입인 프로퍼티 값을 수정하면 부모의 프로퍼티도 수정되어 버린다
+- 깊은 복사를 수행하는 버전의 extend()는 다음과 같다
+
+  ```javascript
+  function extendDeep(parent, child) {
+    var i,
+      toStr = Object.prototype.toString,
+      asrt = "[object Array]";
+
+    child = child || {};
+
+    for (i in parent) {
+      if (parent.hasownPeoperty(i)) {
+        if (typeof parent[i] === "object") {
+          child[i] = toStr.call(parent[i]) === astr ? [] : {};
+          extendDeep(parent[i], child[i]);
+        } else {
+          child[i] = parent[i];
+        }
+      }
+    }
+    return child;
+  }
+  ```
+
+- 이 패턴은 프로토타입과 전혀 관련이 없다는 점에 주의하라. 그저 객체와 프로퍼티만을 다루고 있다
+
+## **6.11 믹스-인**
+
+- 하나의 객체를 복사하는 게 아니라 여러 객체에서 복사해온 것을 한 객체 안에 섞어 넣을 수도 있을 것이다
+- 함수에 인자로 전달된 객체들을 받아 루프를 돌면서 모든 프로퍼티를 복사하면 된다
+
+  ```javascript
+  function mix() {
+    var arg,
+      prop,
+      child = {};
+    for (arg = 0; arg < arguments.length; arg += 1) {
+      for (prop in arguments[arg]) {
+        if (arguments[arg].hasOwnProperty(prop)) {
+          child[prop] = arguments[arg][prop];
+        }
+      }
+    }
+    return child;
+  }
+  ```
+
+- 법용 믹스-인 함수에 여러 개의 객체를 넘기면, 이 객체들의 모든 프로퍼티를 가진 새로운 객체가 반환될 것이다
+
+## **6.12 메서드 빌려쓰기**
+
+- 어떤 객체에서 메서드 한두 개만 마음에 드는 경우가 있다. 이 메서드들을 재사용하고 싶지만 이 객체와 부모-자식 관계까지 만들고 싶지는 않다. 쓸일이 없는 모든 메서드를 상속받지 않고 원하는 메서드만 골라서 사용하고 싶다면 메서드 빌려쓰기 패턴을 이용하면 된다
+- call이나 apply에 객체와 매개변수를 젇라하면, 빌려쓰려는 메서드의 this에 매개 변수로 전달한 객체가 바인딩 된다. 다시 말하면 매개변수로 전달한 객체가 잠시 동안 매서드의 주인 객체처럼 행세하게 되는 것이다
+
+**예제: 배열 메서드 빌려쓰기**
+
+- 이 패턴은 배열 메서드를 빌려오는데 많이 사용된다
+
+  ```javascript
+  function f() {
+    var args = [].slice.call(arguments, 1, 3);
+    return args;
+  }
+
+  //예제
+  f(1, 2, 3, 4, 5, 6); // [2,3]
+  ```
+
+  **별려쓰기와 바인딩**
+
+- call()이나 apply()를 사용하거나 단순한 할당을 통해 메서드를 빌려오게 되면, 빌려온 메서드 안에서 this가 가리키는 객체는 호출식에 따라 정해지게 된다. 그러나 어떤 경우에는 this값을 고정시키거나, 특정 객체에 바인딩되도록 처음부터 정해놓는것이 최선을 때가 있다
+
+  ```javascript
+  function bind(o, m) {
+    return function () {
+      return m.apply(o, [].slice.call(arguments));
+    };
+  }
+  ```
+
+- 이 bind()함수는 o라는 객체와 m이라는 메서드를 인자로 받은 다음, 이 둘을 바인딩한 새로운함수를 반환한다. 반환되는 새로운 함수는 클로저를 통해 o과m에 접근할 수 있다
+- 따라서 bind\*
+  에서 함수를 반호나한 다음에도, 내부 함수는 원본 객체를 가리키는 o와 원본 메서드를 가리키는 m에 접근할 수 있다
+
+**function.prototype.bind()**
+
+- ECMAScript 5에서는 Function.prototype에 bind()메서드가 추가되어, apply()나 call()과 마찬가지로 쉽게 사용할 수 있다
+
+  ```javascript
+  var newFunc = obj.someFunc.bind(myobj, 1, 2, 3);
+  ```
+
+## **6.13 요약**
+
+- 자바스크립트에는 상속에 고나한 다양한 선택지가 존재한다. 이 다양한 패턴들을 학습하고 이해하면, 언어 자체를 이해하는 데도 큰 도움이 된다
+- 정적이고 엄격한 타입의 언어에서는 상속이 코드를 재사용하는 유일한 방법이다. 하지만 자바스크립트에서는 훨씬 간단하고 우아한 방법을 활용할 수 있다
+- 즉 메서드를 빌려오거나, 메서드과 객체를 바인딩하거나, 프로퍼티를 복사하거나, 여러 객체의 프로퍼티를 섞을 수 있다
+- 목표는 코드를 재사용하는 것이고, 상속은 이 목표를 달성하는 여러 가지 방법 중 하나에 불과하다는 것을 기억하라
