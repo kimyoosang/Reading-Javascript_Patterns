@@ -488,3 +488,26 @@
   ```
 
 - 이 패턴은 프로토타입과 전혀 관련이 없다는 점에 주의하라. 그저 객체와 프로퍼티만을 다루고 있다
+
+## **6.11 믹스-인**
+
+- 하나의 객체를 복사하는 게 아니라 여러 객체에서 복사해온 것을 한 객체 안에 섞어 넣을 수도 있을 것이다
+- 함수에 인자로 전달된 객체들을 받아 루프를 돌면서 모든 프로퍼티를 복사하면 된다
+
+  ```javascript
+  function mix() {
+    var arg,
+      prop,
+      child = {};
+    for (arg = 0; arg < arguments.length; arg += 1) {
+      for (prop in arguments[arg]) {
+        if (arguments[arg].hasOwnProperty(prop)) {
+          child[prop] = arguments[arg][prop];
+        }
+      }
+    }
+    return child;
+  }
+  ```
+
+- 법용 믹스-인 함수에 여러 개의 객체를 넘기면, 이 객체들의 모든 프로퍼티를 가진 새로운 객체가 반환될 것이다
