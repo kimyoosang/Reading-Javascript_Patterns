@@ -172,3 +172,42 @@
   1. 무보 생성자 자신의 멤버에 대한 복사존을 가져올 수 있다. 덕분에 자식이 실수로 부모의 프로퍼티를 덮어쓰는 위협을 방지할 수 있다
 - 단점
   1. 프로토타입이 전혀 상속되지 않는다는 한계가 있다. 재사용되는 메서드와 프로퍼티는 인스턴스 별로 재생성되지 않도록 프로토타입에 추가해야 하기 때문이다
+
+### **6.5 클래스 방식의 상속 패턴 #3 - 생성자 빌려쓰고 프로토타입 지정해주기**
+
+- 앞선 두 패턴을 결합해본다. 먼저 부모 생성자를 빌려온 후, 자식의 프로토타입이 부모 생성자를 통해 생성된 인스턴스를 가리키도록 지정한다
+
+  ```javascript
+  function Child(a, c, b, d) {
+    Parent.apply(this, arguments);
+  }
+  Child.prototype = new Parent();
+  ```
+
+- 이렇게 하면 자식 객체는 부모가 가진 자신만의 프로퍼티의 복사좀을 가지게 되는 동시에, 부모의 프로토타입 멤버로 구현된 재사용가능한 기능들에 대한 참조 또한 물려받게 된다
+- 자식이 무도 생성자에 인자를 넘길 수도 있다
+- 부모가 가진 모든 것을 상속하는 동시에, 부모의 프로퍼티를 덮어쓸 위험 없이 자신만의 프로퍼티를 마음놓고 변경할 수 있다
+- 부모 생성자를 비효율적으로 두 번 호출하는 것은 단점일 수 있다. 우리가 살펴본 에제에서 name의 경우와 같이, 부모가 가진 자신만의 프로퍼티는 두 번 상속된다
+
+  ```javascript
+  //부모생성자
+  function Parent(name) {
+    this.name = name || "Adam";
+  }
+
+  //프로토타입에 기능을 추가한다
+  Parent.prototype.say = function () {
+    return this.name;
+  };
+  //자식 생성자
+  function Child(name) {
+    Parent.apply(this, arguments);
+  }
+  Child.prototype = new Parent();
+
+  var kid = new Child('Patrick')
+  kid.name //'Patrick'
+  kid.say() //'Patrick'
+  delete.kid.name;
+  kid.say() //'Adam'
+  ```
