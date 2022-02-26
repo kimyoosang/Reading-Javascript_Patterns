@@ -159,3 +159,98 @@
     };
   })();
   ```
+
+## **7.2 팩터리 (Factory)**
+
+- 팩터리 패턴의 목적은 객체들을 생성하는 것이다. 팩터리 패턴은 흔히 클래스 내부에서 또는 클래스의 스태틱 메서드로 구현되며, 다음과 같은 목적으로 사용된다
+  1. 비슷한 객체를 생성하는 반복작업을 수행한다
+  2. 팩터리 패턴의 사용자가 컴파일 타임에 구체적인 타입(클래스)을 모르고도 객체를 생성할 수 있게 해준다
+- 두 번째 목적은 정적 클래스 언어에서 특히 중요하다. 이런 언어에서는 클래스에 대한 정ㅇ보 없이 인스턴스를 생성하기 쉽지않다. 자바스크립트에서는 이를 구현하기가 상당히 쉽다
+- 팩터리 메서드(또는 클래스)로 만들어진 객체들은 의도적으로 동일한 부모 객체를 상속하낟. 즉, 이들은 특화된 기능을 구현하는 구체적인 서브 클래스들이다. 어떤 경우에는 공통의 부모 클래스가 팩터리 메서드를 갖고있기도 하다
+- 다음 항목들을 포함하는 구현 예제를 살펴보자
+
+  1. CarMaker 생성자: 공통의 부모
+  2. CarMaker.factory(): car 객체들을 생성하는 스태틱 메서드
+  3. CarMaker.Compact, CarMaker.Suv, CarMaker.Convertible: CarMaker를 상속하는 특화된 생성자. 이 모두는 부모의 스태틱 프로퍼티로 정의되어 전역 네임스페이스를 깨끗하게 유지하며, 필요할 때 쉽게 찾을 수 있다
+
+  ```javascript
+  var carolla = CarMaker.factory("Compact");
+  var solstice = CarMaker.factory("Convertible");
+  var cherokee = CarMaker.factory("SUV");
+  corolla.drive(); //"Vroom, I have 4 doors"
+  solstice.drive(); //"Vroom, I have 2 doors"
+  cherokee.drive(); //"Vroom, I have 17 doors"
+  ```
+
+- 이 부분을 눈여겨보자
+
+  ```javascript
+  var carolla = CarMaker.factory("Compact");
+  ```
+
+- 이 부분이 아마도 팩터리 패턴에서 가장 특징적인 부분일 것이다.이 메서드는 런타임시 문자열로 타입을 받아 해당 타입의 객체를 생성하고 반환한다. new와 함께 생성자를 사용하지 않고, 객체 리터럴도 보이지 않는다. 문잦열로 식별되는 타입에 기반하여 객체들을 생성하는 함수가 있을 뿐이다
+- 다음은 이 코드가 동작하게 만드는 팩터리 패턴 구현 예제다
+
+  ```javascript
+  //부모 생성자
+  function CarMaker() {}
+
+  //부모의 메서드
+  CarMaker.prototype.drive = function () {
+    return "Vroom, I have " + this.doors + "doors";
+  };
+
+  //스태틱 factory 메서드
+  CarMaker.factory = function (type) {
+    var constr = type,
+      newcar;
+
+    //생성자가 존재하지 않으면 에러를 발생한다
+    if (typeof CarMaker[constr] !== "function") {
+      throw {
+        name: "Error",
+        message: constr + "doesn't exist",
+      };
+    }
+
+    //생성자의 존재를 호가인했으므로 부모를 상속한다
+    //상속은 단 한번만 실행하도록 한다
+    if (typeof CarMaker[constr].prototype.drive !== "function") {
+      CarMaker[constr].prototype = new CarMaker();
+    }
+
+    //새로운 인스턴스를 생성한다
+    newCar = new CarMaker[constr]();
+
+    //다른 메서들 호출이 필요하면 여기서 실행한 후, 인스턴스를 반환한다
+    return newcar;
+  };
+
+  //구체적인 자동차 메이커들을 선언한다
+  CarMaker.Compact = function () {
+    this.doors = 4;
+  };
+  CarMaker.Convertible = function () {
+    this.doors = 2;
+  };
+  CarMaker.SUV = function () {
+    this.doors = 24;
+  };
+  ```
+
+**내장 객체 팩터리**
+
+- 팩터리 패턴의 실전 예제로 언어에 내장되어 있는 전역 Object() 생성자를 생각해 보자.이 생성자도 입력 값에 따라 다른 객체를 생성하기 때무넹 팩터리처럼 동작한다고 할 수 있다
+
+  ```javascript
+  var o = new Object(),
+    n = new Object(1),
+    s = Object("1"),
+    b = Object(true);
+
+  //테스트
+  o.constructor = Object; //true
+  n.constructor = Number; //true
+  s.constructor = String; //true
+  b.constructor = Boolean; //true
+  ```
