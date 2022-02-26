@@ -254,3 +254,58 @@
   s.constructor = String; //true
   b.constructor = Boolean; //true
   ```
+
+## **7.3 반복자 (Iterator)**
+
+- 반복자 패턴에서, 객체는 일종의 집합적인 데이터를 가진다. 데이터가 저장된 내부구조는 복잡하더라도 개별 요소에 쉽게 접근할 방법이 필요할 것이다. 객체의 사용자는 데이터가 어떻게 구조화되었는지 알 필요가 없고 개별 요소로 원하는 작업을 할 수만 있으면 된다
+- 반복자 패턴에서, 객체는 next() 메서드를 제공한다. next()를 연이어 호출하면 반드시 다음 순서의 요소를 반환해야 한다. 데이터 구조 내에서 '다음 순서'가 무엇을 의미하는지는 여러분에게 달려있다
+- agg라는 객체가 있다고 할때, 다음과 같이 단순히 루프 내에서 next()를 호출하여 개별 데이터 요소에 접글할 수 있다
+
+  ```javascript
+  var element;
+
+  while ((element = agg.next())) {
+    //element로 어떤 작업을 수행한다
+    console.log(element);
+  }
+  ```
+
+- 반복자 패턴에서 객체는 보통 hasNext()라는 편리한 메서드도 제공한다. 객체의 사용자는 이 메서드로 데이터의 마지막에 다다랐는지 확인할 수 있다
+
+  ```javascript
+  while (agg.hasNext()) {
+    //다음 요소로 어떤 작업을 수행한다
+    console.log(agg.next());
+  }
+  ```
+
+- 반복자 패턴을 구현할 때 데티너는 물론 다음에 사용할 요소를 가리키는 포인터도 비공개로 저장해두는 것이 좋다
+- 데이터에 좀더 쉽게 접그느하고 여러 차례 반복해 순회할 수 있도록, 다음과 같은 편의 메서드를 추가로 제공할 수 있다
+  1. rewind(): 포인터를 처음으로 되돌린다
+  2. current(): 현재의 요소를 반환한다. next()는 포인터를 전진시키기 때문에 이 작업을 할 수 없다
+
+```javascript
+var agg = (function () {
+  //생략
+
+  return {
+    //생략
+    rewind: function () {
+      index = 0;
+    },
+    current: function () {
+      return data[index];
+    },
+  };
+})();
+
+//테스트
+//이 루프는 1,3,5를 찍을 것이다
+while (agg.hasNext()) {
+  console.log(agg.next());
+}
+
+//처음으로 되돌린다
+agg.rewind();
+console.log(agg.current); //1
+```
