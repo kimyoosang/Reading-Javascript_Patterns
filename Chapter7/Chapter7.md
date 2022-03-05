@@ -309,3 +309,263 @@ while (agg.hasNext()) {
 agg.rewind();
 console.log(agg.current); //1
 ```
+
+## **7.4 장식자 (Decorator)**
+
+- 장식자 패턴을 이용하면 런타임시 부가적인 기능을 객체에 동적으로 추가할 수 있다
+- 장식자 패턴의 편리한 특징은 기대되는 행위를 사용자화하거나 설정할 수 있다는 것이다. 처음에는 기보적인 몇가지 기능을 가지는 평범한 객체로 시작한다. 그런 다음 사용 가능한 장식자들의 풀(pool)에서 원하는 것을 골라 갹채애ㅔ 가눙울 덧붙여간다
+
+**구현**
+
+- 장식자 패턴을 구현하기 위한 한 가지 방법은 모든 장식자 객체에 특정 메서드를 포함시킨 후, 이 메서드를 덮어쓰게 만드는 것이다
+- 각 장식자는 사실 이전의 장식자로 기능이 추가된 객체를 상속한다. 장식 기능을 담당하는 메서드들은 uber(상속된 객체)에 이쓴ㄴ 동일한 메서드를 호출하여 값을 가져온다음 추가 작업을 덧붙이는 방식으로진행한다
+
+  - 먼저 생성자와 프로토타입 메서드부터 시작해보자
+
+  ```javascript
+  function Sale(price) {
+    this.price = price || 100;
+  }
+  Sale.prototype.getPrice = function () {
+    return this.price;
+  };
+  ```
+
+  - 장식자 객체들은 생성자 프로퍼티 Sale.decorators의 프로퍼티로 구현된다
+
+  ```javascript
+  Sale.decorators = {};
+  ```
+
+  - 장식자 객체는 처음에는 부모의 메서드로부터 값을 가져온 다음 그 값을 변경한다는 점에 주의한다
+
+  ```javascript
+  Sale.decorators.fedtax = {
+    getPrice: function () {
+      var price = this.uber.getPrice();
+      price += (price * 5) / 100;
+      return price;
+    },
+  };
+  Sale.decorators.quebec = {
+    getPrice: function () {
+      var price = this.uber.getPrice();
+      price += (price * 7.5) / 100;
+      return price;
+    },
+  };
+  Sale.decorators.money = {
+    getPrice: function () {
+      return "$" + this.uber.getPrice().toFixed(2);
+    },
+  };
+  Sale.decorators.cdn = {
+    getPrice: function () {
+      return "CDN$" + this.uber.getPrice().toFixed(2);
+    },
+  };
+  ```
+
+  - 모든 조각들을 짜맞추는 decorate() 메서드를 구현해보자
+  - 자식 객체가 부모 객체에 접근할 수 있도록 newobj에 uber프로퍼티를 저장한다. 그러고 나서 모든 장식자들의 추가 프로퍼티들을 새로 꾸며진 newobj 객체로 복사한다. 마지막으로 newobj가 반환된다. 이 예제에서는 newobj가 새롭게 갱신된 sale객체다
+
+  ```javascript
+  Sale.prototype.decorate = function (decorator) {
+    var F = function () {},
+      overrides = this.constructor.decorators[decorator],
+      i,
+      newobj;
+    F.prototype = this;
+    newobj = new F();
+    newobj.uber = F.prototype;
+    for (i in overrides) {
+      if (overrides.hasOwnProperty(i)) {
+        newobj[i] = overrides[i];
+      }
+    }
+    return newobj;
+  };
+  ```
+
+**목록을 사용한 구현**
+
+- 이 방법은 자바스크립트의 동적 특성을 최대한 활용하며 상속은 전혀 사용하지 않는다. 각각의 꾸며진 메서드가 체인 안에 있는 이전의 메서드를 호출하는 대신에, 간단하게 이전 메서드의 결과를 다음 메서드에 매개변수로 전달한다
+- 이 구현 방법을 사용하면 장식을 취소하거나 제거하기 쉽다
+- decorate()에서 반환된 값을 다시 객체에 할당하지 않기 때문에 사용방법이 조금 더 간단하다. decorate()는 목록에 장식자를 추가하기만 할 뿐, 객체에는 아무런 일도 하지 않는다
+
+  ```javascript
+  var sale = new Sale(100); //가격은 100달러이다
+  sale.decorate("fedtax"); //연방세를 추가한다
+  sale.decorate("quebec"); //지방세를 추가한다
+  sale.decorate("money"); //통화형식을 지정한다
+  sale.getPrice(); // $112.88
+
+  function Sale(price) {
+    this.price = price > 0 || 100;
+    this, (decorators_list = []);
+  }
+  ```
+
+- 사용가능한 장식자들은 여기서도 Sale.decorators의 프로퍼티로 구현된다
+- getPrice()메서드 역시 더 간단해졌음을 확인할 수 있다. 중간 결과 값을 가져오기 위해 부모의 getPrcie()를 호출할 필요가 없어졌기 때문이다. 결과 값은 매개변수로 그들에게 전달된다
+
+  ```javascript
+  Sale.decorators = {};
+
+  Sale.decorators.fedtax = {
+    getPrice: function (price) {
+      return price + price * 5 / 100;
+    },
+  };
+  Sale.decorators.quebec = {
+    getPrice: function (price) {
+      return price + price * 7.5 / 100;
+    },
+  Sale.decorators.money = {
+    getPrice: function (price) {
+      return '$' + price.toFixed(2)
+    },
+  ```
+
+- decorate()는 단지 장식자를 목록에 추가할 뿐이고 getPrice()가 모든 일을 한다. 즉 현재 추가된 장식자들의 목록을 조사하고, 각각의 getPrice() 메서드를 호출하면서 이전 반환 값을 전달한다
+
+  ```javascript
+  Sale.prototype.decorate = function (decorator) {
+    this.decorators_list.push(decorator);
+  };
+  Sale.prototype.getPrice = function () {
+    var price = this.price,
+      i,
+      max = this.decorators_list.length,
+      name;
+    for (i = 9; i < max; i += 1) {
+      name = this.decorators_list[i];
+      price = Sale.decorators[name].getPrice(price);
+    }
+    return price;
+  };
+  ```
+
+- 두 번째 장식자 패턴 구현 방법이 더 간단하고 상속과 관련이 없다
+
+## **7.6 전략**
+
+- 전략 패턴은 런타임에 알고리즘을 선택할 수 있게 해준다. 사용자는 동일한 인터페이스를 유지하면서, 특정한 작업을 처리할 알고리즘을 여러 가지 중에서 상화엥 맞게 선택할 수 있다
+
+**데이터 유효성 검사 예제**
+
+- 웹페이지상의 폼에서 가져온 다음과 같은 데이터가 있다고 하자. 유효성 검사기를 통해 데이터가 유효한지 검증하려고 한다
+
+  ```javascript
+  var data = {
+    first_name: "Super",
+    last_name: "Man",
+    age: "unknown",
+    username: "o_0",
+  };
+  ```
+
+- 설정을 통해 어떤 데이터를 유효한 데이터로 받아들일지 규칙을 지정해야한다
+
+  ```javascript
+  validator.config = {
+    first_name: "isNonEmpty",
+    age: "isNumber",
+    username: "usAlphaNum",
+  };
+  ```
+
+- 유효성 검사기(validator)객체가 데이터를 처리할 수 있도록 설정되었으니, validate() 메서드를 호출하여 검증 오류가 발생하는지 콘솔에 출력해보자
+
+  ```javascript
+  validator.validate(data);
+  if (validator.hasErrors()) {
+    console.log(validator.messages, join("\n"));
+  }
+  //'나이'값이 유효하지 않습니다. 숫자만 사용할 수 있습니다. 예" 1, 3.14, 2010
+  //'사용자명'값이 유효하지 않습니다. 특수 문자를 제외한 글자와 숫자만 사용할 수 있습니다
+  ```
+
+- 이제 유효성 검사기(validator) 객체가 어떻게 구현되는지 살펴보자. 검사에 사용되는 알고리즘 객체들은 사전에 정의된 인터페이스를 가진다. 이 객체들은 validate() 메서드와 에러 메시지에서 사용될 한 줄 짜리 도움말 정보인 instructions 프로퍼티를 제공한다
+
+  ```javascript
+  //값을 가지는지 확인한다
+  validator.types.isNinEmpty = {
+    validate: function(value) {
+      return value !== ""
+    },
+    instructions: "이 값은 필수입니다"
+  }
+  //숫자 값인지 확인한다
+  validator.types.isNumber = {
+    validate: function (value) {
+      return !isNaN(value)
+    },
+    instructions:"숫자만 사용할 수 있습니다. 예: 1, 3.14, 2010"
+  }
+  //값이 문자와 숫자로만 이루어졌는지 확인한다
+  validator.types.isAlphaNum = {
+    validate: function(value) {
+      return !\[^a-z0-9/i.test(value)]
+    },
+    instructions:"특수 문자를 제외한 글자와 숫자만 사용할 수 있습니다"
+  }
+
+  ```
+
+- 마지막으로 validator 객체의 핵심 부분을 살펴보자
+
+  ```javascript
+  var validator = {
+    // 사용할 수 있는 모든 검사 방법들
+    types = {}.
+
+    //현재 유효성 검사 세션의 에러 메시지들
+    messages: [],
+
+    //현재 유효성 검사 설정
+    //'데이터 필드명: 사용할 검사 방법'의 형식
+    config:{},
+
+    //인터페이스 메서드
+    //'data'는 이름 => 값 쌍이다
+    validate: function (data) {
+      var i, msg, type, checker, result_ok
+
+      //모든 메시지를 초기화한다
+      this.messages = []
+
+      for(i in data) {
+        if(data.hasOwnProperty(i)){
+
+          type = this.config[i]
+          checker = this.types[type]
+
+          if(!type) {
+            continue //서어정된 검사 방법이 없을경우 검증할 필요가 없으므로 건너뛴다
+          }
+          if(!checker) { //설정이 존재하나 해당하는 검사 방법을 찾을 수 없을 경우 오류 발생
+            throw {
+              name:"ValicationError",
+              message: type + '값을 처리할 유효성 검사기가 존재하지 않습니다'
+            }
+          }
+          result_ok = checker.valudate(data[i])
+          if(!result_ok) {
+            msg = "/'" + i + "\'값이 유효하지 않습니다." +checker.instructions
+          }
+        }
+      }
+      return this.hasErrors()
+    },
+
+    //도우미 메서드
+    hasErrors: function() {
+      return this.messages.length !== 0
+    }
+  }
+
+  ```
+
+- validator 객체는 범용적인 형태이기 때문에 모든 유효성 검사 사례에 사용할 수 있다
+- 새로운 사례가 생길 때마다 단지 validator 객체에 설정을 추가하고 validatr() 메서드를 호출하기만 하면 된다
