@@ -569,3 +569,49 @@ console.log(agg.current); //1
 
 - validator 객체는 범용적인 형태이기 때문에 모든 유효성 검사 사례에 사용할 수 있다
 - 새로운 사례가 생길 때마다 단지 validator 객체에 설정을 추가하고 validatr() 메서드를 호출하기만 하면 된다
+
+## **7.6 퍼사드(Facade)**
+
+- 이 패턴은 객체의 대체 인터페이스를 제공한다. 메서드를 짧게 유지하고 하나의 메서드가 너무 많은 작업을 처리하지 않게 하는 방법은 설계상 좋은 습관이다
+- 하지만 이렇게 하ㄷ보면 메서드 숫자가 엄청나게 많아지거나 uber 메서드에 엄청나게 많은 매개변수를 전달하게 될 수 있다. 두 개 이상의 메서드가 함게 호출되는 경우가 많다면, 이런 메서드 호출들을 하나로 묶어주는 새로운 메서드를 만드는게 좋다
+- 예를 들어 브라우저 이벤트를 처리할 때 사용하는 stopPropagation()과 preventDefault()는 한꺼번에 호출되는 일이 많다. 따라서 두 개의 메서드 호출을 애플리케이션 여기저기에서 반복하기 보다는, 이 둘을 함께 호출하는 퍼사드 메서드를 생성하는게 좋다
+
+  ```javascript
+  var myevent = {
+    //...
+    stop: function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    //....
+  };
+  ```
+
+- 퍼사드 패턴은 브라우저 스크립팅에도 적합하다. 브라우저 간의 차이점을 퍼사드 뒤편에 숨길 수 있기 때문이다
+- IE에서의 이벤트 API 차이를 처리하는 코드를 추가해보자
+
+  ```javascript
+  var myevent = {
+    //...
+    stop: function (e) {
+      //IE 이외의 브라우저
+      if (typeof e.preventDefault === "function") {
+        e.preventDefault();
+      }
+      if (typeof e.stopPropagation === "function") {
+        e.stopPropagation();
+      }
+      //IE
+      if (typeof e.returnValue === "boolean") {
+        e.returnValue = false;
+      }
+      if (typeof e.canceBubble === "boolean") {
+        e.canceBubble = true;
+      }
+    },
+    //....
+  };
+  ```
+
+- 퍼사드 패턴은 설계 변경과 리팩터링의 수고를 덜어준다. 복잡한 객체의 구현 내용을 교체하는 데는 상단한 시간이 걸리는데, 이와 동시에 이 객체를 사용하는 새로운 코드가 계속해서 작성되고 있을 것이다
+- 이런 경우, 우선 새로운 객체의 API를 생각해보고, 기존 객체 앞에 이 API의 역할을 하는 퍼사드를 생성해 적용해볼 수 있다. 이렇게 기존 객체를 완전히 교체하기 전에 최신 코드가 새로운 API를 사용하게 하면, 최종 교체시 변경폭을 줄일 수 있다
