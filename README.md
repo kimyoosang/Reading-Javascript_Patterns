@@ -14,4 +14,4 @@
 
 ### [Chapter7. 디자인 패턴](./Chapter7/Chapter7.md)
 
-### Chapter8. DOM과 브라우저 패턴
+### [Chapter8. DOM과 브라우저 패턴](./Chapter8/Chapter8.md)
