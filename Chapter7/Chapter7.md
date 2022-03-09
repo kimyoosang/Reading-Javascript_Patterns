@@ -615,3 +615,111 @@ console.log(agg.current); //1
 
 - 퍼사드 패턴은 설계 변경과 리팩터링의 수고를 덜어준다. 복잡한 객체의 구현 내용을 교체하는 데는 상단한 시간이 걸리는데, 이와 동시에 이 객체를 사용하는 새로운 코드가 계속해서 작성되고 있을 것이다
 - 이런 경우, 우선 새로운 객체의 API를 생각해보고, 기존 객체 앞에 이 API의 역할을 하는 퍼사드를 생성해 적용해볼 수 있다. 이렇게 기존 객체를 완전히 교체하기 전에 최신 코드가 새로운 API를 사용하게 하면, 최종 교체시 변경폭을 줄일 수 있다
+
+## **7.7 프록시 (Proxy)**
+
+- 프록시 디자인 패턴에서는 하나의 객체가 다른 객체에 대한 인터페이스로 동작한다. 퍼사드 패턴이 메서드 호출 몇개를 결합시켜 편의를 제공하는 것에 불과하다면, 프록시는 클라이언트 객체와 실제 대상 객체 사이에 존재하면서 접근을 통제한다
+- 이 패턴은 비용이 증가하는 것처럼 보일 수도 있지만 실제로는 성능 개선에 도움을 준다. 프록시는 실제 대상 객체를 보호하야, 되도록 일을 적게 시키기 대문이다
+- 프록시 패턴의 한 예로, 게으른 초기화(lazy initialization) 를 들 수 있다. 객체를 초기화하는 데 많은 비용이 들디만, 실제로 초기화한 후에는 한번도 사용하지 않는다고 해보다. 이런경우에 실제 대상 객체에 대한 인터페이스로 프록시를 사용하면 도움이 된다. 프록시는 초기화 요청을 대신 받지만, 실제 대상 객체가 정말로 사용되기 전까지는 이 요청을 전달하지 않는다
+
+**예제**
+
+- 프록시 패턴은 실제 대상 객체가 비용이 많이 드는 작업을 할 때 유용하다. 네트워크 요청은 애플리케이션에서 가장 비용이 많이 드는 작업중 하나다. 따라서 가능한 많은 HTTP 요청들을 하나로 결합하는 게 효과적이다
+- HTTP 요청을 결합하는 예제
+  - 가수를 선택하면 동영상을 재생해주는 간단한 애플리케이션
+  - 동영상 정보와 URL은 페이지 내에 있지 않고 웹서비스를 호출하여 가져와야한다. 웹서비스는 다수의 동영상 ID를 받을 수 있기 때문에, 가능한 많은 수의 동영상 정보를 한꺼번에 가져오면 HTTP 요청 횟수가 줄어들어 애플리케이션 속도를 개선할 수 있다
+  - 이 애플리케이션은 여러 개 또는 모든 동영상을 동시에 선택해 정보를 조회할 수 있므르로, 이 웹서비스 요청을 결합시키면 좋을 것이다
+- **프록시가 없을 경우**
+
+  - 이 애플리케이션에서 주요 행위자는 다음의 두 객체다
+    - videos
+      - videos.getInfo() 메서드로 정보 영역을 펼치고 닫는다. videos.getPlayer() 메서드로 동영상을 재생한다
+    - http
+      - http.makeReauest()메서드를 통해 서버와 통신한다
+  - 프록시가 없다면, 각각의 동영상이 videos.getInfo()를 호출할 때마다 http.makeRequest()도 한 번씩 호출될 것이다. 프록시를 추가하면 proxy라는 새로운 행위자가 videos와 http사이에 들어가 makeRequest()에 대한 요청을 위임받으면서, 가능하면 이 요청을 병합하게 된다
+
+    ```javascript
+    //videos 객체
+    var videos = {
+      getPlayer: function (id) {},
+      updateList: function (data) {},
+      getinfo: function (id) {
+        var info = $("info" + id);
+        if (!info) {
+          http.makeRequest([id], "videos.updateList");
+          return;
+        }
+        if (info.style.display === "none") {
+          info.style.display = "";
+        } else {
+          info.style.display = "none";
+        }
+      },
+    };
+    ```
+
+  **프록시 추가**
+
+  - proxy 객체를 추가해 http객체와 videos 객체 간의 통신을 전담하게 만들 것이다. videos 객체는 HTTP 서비스를 직접 호출하는 대신 proxy를 호출한다. proxy는 요청을 전달하기 전에 잠시 기다린다. 대기중인 50밀리초 안에 videos로부터 다른 호출이 들어오면 하나로 병합한다
+  - 50밀리초 대기 시간은 사용자가 인지하기 힘든 짧은 시간이지만 "Toggel Checked"를 클릭해서 한 번에 여러 개의 동영상을 펼쳐보려고 할 때 개별 요청들을 병합시킴으로써 사용자 경험의 속도를 개선하는데 도움이 된다. 웹서버 역시처리할 요청의 수가 줄어들기 때문에 부하를 상당히 덜 수 있다
+  - 수정된 버전의 코드가 이전의 코드와 유일하게 다른 점은 다음과 갍이 videos.getinfo()가 http.makeRequest() 대신에 proxy.makeRequest()를 호출한다는 것이다
+
+    ```javascript
+    proxy.makeRequest(id, videos.updateList, videos);
+    ```
+
+  - 프록시는 최근 50밀리초 이내에 받아들인 도영상 ID를 대기열 (queue)에 모아놓았다가, http 객체를 호출하면서 대기열을 비운다(flush). 이때 자신의 콜백 함수도 전달한다
+
+    ```javascript
+    var proxt = {
+      ids: [],
+      delay: 50,
+      timeout: null,
+      callback: null,
+      context:null,
+
+      makeRequest: function(id, callback, context) {
+
+        //큐에 추가한다
+        this,ids.push(id)
+
+        this.callback = callback
+        this.context = context
+
+        //timeout을 설정한다
+        if(!this.timeout) {
+          this.timeout = setTimeout(function() {
+            proxy.flush()
+          }, this.delay)
+        }
+
+      },
+      flush: function() {
+        http.makeRequest(this.ids, "proxy.handler")
+
+        //timeout과 큐를 비운다
+        this.timeout = null
+        this.ids = []
+      },
+      handler: function(data) {
+        var i, max
+        //동영상이 한 개일 경우
+        if(parseInt(data.query.count, 10) === 10) {
+          proxy.callback.call(proxy.context,data.query.results.Video)
+          return
+        }
+        //동영상이 여러 개일 경우
+        for (i=0; max = data.query.results.Video.length; i < max; i += 1) {
+          proxy.callback.call(proxy.context,data.query.results.Video[i])
+        }
+      }
+    }
+
+    ```
+
+  - 프로시를 도입하면 간단한 수정을 통해 여러 개의 웹서비스 호출을 하나로 병합할 수 있게 된다
+
+**프록시를 사용해 요청 결과 캐시하기**
+
+- 프록시의 새로운 cache 프로퍼티에 이전 요청의 결과를 캐시해두면, 실제 http객체를 더욱 보호할 수 있다
+- 망약 vidoes 객체가 도이일한 동영상 ID에 대한 정보를 다시 요청하면, 프록시는 캐시된 결과를 반환해서 네트워크 라운드트립을 줄인다
