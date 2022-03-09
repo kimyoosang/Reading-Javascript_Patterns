@@ -615,3 +615,361 @@ console.log(agg.current); //1
 
 - 퍼사드 패턴은 설계 변경과 리팩터링의 수고를 덜어준다. 복잡한 객체의 구현 내용을 교체하는 데는 상단한 시간이 걸리는데, 이와 동시에 이 객체를 사용하는 새로운 코드가 계속해서 작성되고 있을 것이다
 - 이런 경우, 우선 새로운 객체의 API를 생각해보고, 기존 객체 앞에 이 API의 역할을 하는 퍼사드를 생성해 적용해볼 수 있다. 이렇게 기존 객체를 완전히 교체하기 전에 최신 코드가 새로운 API를 사용하게 하면, 최종 교체시 변경폭을 줄일 수 있다
+
+## **7.7 프록시 (Proxy)**
+
+- 프록시 디자인 패턴에서는 하나의 객체가 다른 객체에 대한 인터페이스로 동작한다. 퍼사드 패턴이 메서드 호출 몇개를 결합시켜 편의를 제공하는 것에 불과하다면, 프록시는 클라이언트 객체와 실제 대상 객체 사이에 존재하면서 접근을 통제한다
+- 이 패턴은 비용이 증가하는 것처럼 보일 수도 있지만 실제로는 성능 개선에 도움을 준다. 프록시는 실제 대상 객체를 보호하야, 되도록 일을 적게 시키기 대문이다
+- 프록시 패턴의 한 예로, 게으른 초기화(lazy initialization) 를 들 수 있다. 객체를 초기화하는 데 많은 비용이 들디만, 실제로 초기화한 후에는 한번도 사용하지 않는다고 해보다. 이런경우에 실제 대상 객체에 대한 인터페이스로 프록시를 사용하면 도움이 된다. 프록시는 초기화 요청을 대신 받지만, 실제 대상 객체가 정말로 사용되기 전까지는 이 요청을 전달하지 않는다
+
+**예제**
+
+- 프록시 패턴은 실제 대상 객체가 비용이 많이 드는 작업을 할 때 유용하다. 네트워크 요청은 애플리케이션에서 가장 비용이 많이 드는 작업중 하나다. 따라서 가능한 많은 HTTP 요청들을 하나로 결합하는 게 효과적이다
+- HTTP 요청을 결합하는 예제
+  - 가수를 선택하면 동영상을 재생해주는 간단한 애플리케이션
+  - 동영상 정보와 URL은 페이지 내에 있지 않고 웹서비스를 호출하여 가져와야한다. 웹서비스는 다수의 동영상 ID를 받을 수 있기 때문에, 가능한 많은 수의 동영상 정보를 한꺼번에 가져오면 HTTP 요청 횟수가 줄어들어 애플리케이션 속도를 개선할 수 있다
+  - 이 애플리케이션은 여러 개 또는 모든 동영상을 동시에 선택해 정보를 조회할 수 있므르로, 이 웹서비스 요청을 결합시키면 좋을 것이다
+- **프록시가 없을 경우**
+
+  - 이 애플리케이션에서 주요 행위자는 다음의 두 객체다
+    - videos
+      - videos.getInfo() 메서드로 정보 영역을 펼치고 닫는다. videos.getPlayer() 메서드로 동영상을 재생한다
+    - http
+      - http.makeReauest()메서드를 통해 서버와 통신한다
+  - 프록시가 없다면, 각각의 동영상이 videos.getInfo()를 호출할 때마다 http.makeRequest()도 한 번씩 호출될 것이다. 프록시를 추가하면 proxy라는 새로운 행위자가 videos와 http사이에 들어가 makeRequest()에 대한 요청을 위임받으면서, 가능하면 이 요청을 병합하게 된다
+
+    ```javascript
+    //videos 객체
+    var videos = {
+      getPlayer: function (id) {},
+      updateList: function (data) {},
+      getinfo: function (id) {
+        var info = $("info" + id);
+        if (!info) {
+          http.makeRequest([id], "videos.updateList");
+          return;
+        }
+        if (info.style.display === "none") {
+          info.style.display = "";
+        } else {
+          info.style.display = "none";
+        }
+      },
+    };
+    ```
+
+  **프록시 추가**
+
+  - proxy 객체를 추가해 http객체와 videos 객체 간의 통신을 전담하게 만들 것이다. videos 객체는 HTTP 서비스를 직접 호출하는 대신 proxy를 호출한다. proxy는 요청을 전달하기 전에 잠시 기다린다. 대기중인 50밀리초 안에 videos로부터 다른 호출이 들어오면 하나로 병합한다
+  - 50밀리초 대기 시간은 사용자가 인지하기 힘든 짧은 시간이지만 "Toggel Checked"를 클릭해서 한 번에 여러 개의 동영상을 펼쳐보려고 할 때 개별 요청들을 병합시킴으로써 사용자 경험의 속도를 개선하는데 도움이 된다. 웹서버 역시처리할 요청의 수가 줄어들기 때문에 부하를 상당히 덜 수 있다
+  - 수정된 버전의 코드가 이전의 코드와 유일하게 다른 점은 다음과 갍이 videos.getinfo()가 http.makeRequest() 대신에 proxy.makeRequest()를 호출한다는 것이다
+
+    ```javascript
+    proxy.makeRequest(id, videos.updateList, videos);
+    ```
+
+  - 프록시는 최근 50밀리초 이내에 받아들인 도영상 ID를 대기열 (queue)에 모아놓았다가, http 객체를 호출하면서 대기열을 비운다(flush). 이때 자신의 콜백 함수도 전달한다
+
+    ```javascript
+    var proxt = {
+      ids: [],
+      delay: 50,
+      timeout: null,
+      callback: null,
+      context:null,
+
+      makeRequest: function(id, callback, context) {
+
+        //큐에 추가한다
+        this,ids.push(id)
+
+        this.callback = callback
+        this.context = context
+
+        //timeout을 설정한다
+        if(!this.timeout) {
+          this.timeout = setTimeout(function() {
+            proxy.flush()
+          }, this.delay)
+        }
+
+      },
+      flush: function() {
+        http.makeRequest(this.ids, "proxy.handler")
+
+        //timeout과 큐를 비운다
+        this.timeout = null
+        this.ids = []
+      },
+      handler: function(data) {
+        var i, max
+        //동영상이 한 개일 경우
+        if(parseInt(data.query.count, 10) === 10) {
+          proxy.callback.call(proxy.context,data.query.results.Video)
+          return
+        }
+        //동영상이 여러 개일 경우
+        for (i=0; max = data.query.results.Video.length; i < max; i += 1) {
+          proxy.callback.call(proxy.context,data.query.results.Video[i])
+        }
+      }
+    }
+
+    ```
+
+  - 프로시를 도입하면 간단한 수정을 통해 여러 개의 웹서비스 호출을 하나로 병합할 수 있게 된다
+
+**프록시를 사용해 요청 결과 캐시하기**
+
+- 프록시의 새로운 cache 프로퍼티에 이전 요청의 결과를 캐시해두면, 실제 http객체를 더욱 보호할 수 있다
+- 망약 vidoes 객체가 도이일한 동영상 ID에 대한 정보를 다시 요청하면, 프록시는 캐시된 결과를 반환해서 네트워크 라운드트립을 줄인다
+
+## **7.8 중재자 (Mediator)**
+
+- 크기에 상관 없이 애플리케이션은 독립된 객체들로 만들어진다. 객체간의 통신은 유지보수가 쉽고 다른 객체를 건드리지 않으면서, 애플리케이션의 일부분을 안전하게 수정할 수 있는 방식으로 이루어져야 한다
+- 객체들이 서로에 대해 너무 많은 정보를 아는 상태로 직접 통신하게 되면 서로간에 결합도가 높아져 바람직하지 않다. 객체들이 강하게 결합되면, 다른 객체들에 영향을 주지 않고 하나의 객체를 수정하기가 어렵다. 매우 간단한 변경도 어려워지고, 수정에 필요한 시간을 예측하는 것이 사실상 불가능해진다
+- 중재자 패턴은 결합도를 낮추고 유지보수를 쉽게 개선하여 이런 문제를 완화시킨다. 이 패턴에서 독립된 동료 객체들은 직접 통신하지 않고, 중재자 객체를 거친다. 동료 객체들은 자신의 상태가 변경되면 중재자에게 알리고, 중재자는 이 변경 사항을 아아야 하는 다른 동료 객체들에게 알린다
+
+**중재자 패턴 예제**
+
+- 두 명의 플레이어 중 주어진 30초 동안 버튼을 더 많이 누르는 사람이 이기는 게임 애플리케이션이 있다. 플레이어 1은 1키를 누르고 플레이어 2는 0키를 누른다. 점수판에서 현재의 점수를 표시한다
+- 이 게임을 구성하는 객체들은 다음과 같다
+  - 플레이어 1
+  - 플레이어 2
+  - 점수판
+  - 중재자
+- 중재자는 다른 모든 객체에 대해 알고 있다. 중재자는 입력 장치와 통신하며, keypress 이벤트를 처리하고, 어떤 플레이어의 차례인지 결정해서 알려준다. 플레이어는 게임을 하면서 1점을 딸 때마다 득점 사실을 중재자에게 알려준다. 중재자는 점수판 객체에 플레이어의 점수를 전달한다. 전달된 점수는 차례로 화면에 표시된다
+- 중재자 이외의 객체들은, 다른 객체들에 대해 전혀 알지 못한다. 덕분에 게임에 플레이어를 추가하거나 게임의 남은 시간을 표기하는 등의 새로운 기능을 쉽게 추가할 수 있다
+- 플레이어 객체들은 Player() 생성자로 만ㄷ르어지고 points와 name 프로퍼티를 가진다. 프로토타입에 추가된 play()메서드는 점수를 1점씩 올리고 점수 변화를 중재자(mediator)에게 알린다
+
+  ```javascript
+  function Player(name) {
+    this.points = 0;
+    this.name = name;
+  }
+  Player.prototype.play = function () {
+    this.points += 1;
+    mediator.played();
+  };
+  ```
+
+- 점수판 객체(scoreboard)는 update() 메서드를 가진다. 플레이어의 차례가 바뀔 때마다 중재자 객체가 이 메서드를 호출한다. 중재자로부터 전달받은 점수를 표시만 할 뿐이다
+
+  ```javascript
+  var scoreboard = {
+    //점수를 표시할 HTML 엘리먼트
+    elemente: document.getClementById("results"),
+
+    //점수 표시를 갱신한다
+    update: function (score) {
+      var i,
+        msg = "";
+      for (i in score) {
+        if (score.hasOwnProperty(i)) {
+          mag += "<p><strong>" + i + "</strong>";
+          msg += score[i];
+          mas += "</p>";
+        }
+      }
+      this.element.innerHTML = msg;
+    },
+  };
+  ```
+
+- 중재자 객체(meiator)는 게임을 초기화한다
+- setup() 메서드 안에서 player객체를 만들고, players 프로퍼티에 플레이어 객체들의 참조를 저장해준다
+- player()메서드는 차례가 바뀔 때마다 각 츨레이어 객체에 의해 호출된다. 이 메서드는 score 해시를 업데이트한 다음 scoreboard 객체에 전달해 화면에 점수를 표시한다
+- 마지막 메서드인 keypress()는 키보드 이벤트를 처리하고 어떤 플레이어의 차례인지 판단해 알려준다
+
+  ```javascript
+  var mediator = {
+    //모든 player 객체들
+    players: {},
+
+    //초기화
+    setup: function() {
+      var players = this.players
+      players.home = new Player('Home')
+      players.guest = new Player('Guest')
+    },
+
+    //누군가 play하고 점수를 업데이트 한다
+    played: function () {
+      var players = this,.players,
+          score = {
+            Home: players.home.points,
+            Guest: players.guest.points
+          }
+          scoreboard.update(score)
+    },
+
+    //사용자 인터렉션을 핸들링한다
+    keypress: function() {
+      e= e || window.event //IE
+      if(e.which === 49) { // 키 "1"
+        mediator.players.home.play()
+        return
+      }
+      if(e.which === 48) { //키 "2"
+        mediator.players.guest.play()
+        return
+      }
+    }
+  }
+
+  ```
+
+- 그리고 마지막으로 게임을 시작하고 종료시킨다
+
+  ```javascript
+  //시작!
+  mediator.setup();
+  window.onkeypress = mediator.keypress;
+
+  //30초 후에 게임을 종료시킨다
+  setTiumeout(function () {
+    window.onkeypress = null;
+    alert("Game over");
+  }, 30000);
+  ```
+
+## **7.9 감시자 (Observer)**
+
+- 감시자 패턴은 클라이언트 측 자바스크립트 프로그래밍에서 널리 사용되는 패턴이다. mouseover, keypress 와 같은 모든 브라우저 이벤트가 감시자 패턴의 예다. 감시자 패턴은 **커스텀 이벤트(custom event)**라고 부르기도 하는데, 이는 브라우저가 발생시키는 이벤트가 아닌 프로그램에 의해 만들어진 이벤트를 뜻한다. 또 다른 이름으로 구독자/발행자 패턴이라고도 한다
+- 이 패턴의 주요 목적은 결합도를 낮추는 것이다. 어떤 객체가 다른 객체의 메서드를 호출하는 대신, 객체의 특별한 행동을 구독해 알림을 받는다. 구독자는 감시자 라고도 부르며, 관찰되는 객체는 발행자 또는 감시대상이라고 부른다. 발행자는 중요한 이벤트가 발생했을 때 모든 구독자에게 알려주며 주로 이벤트 객체의 형태로 메시지를 전달한다
+
+**예제: 잡지구독**
+
+- 일간 신문과 월간 잡지를 출판하는 paper라는 발행자가 있다. 구독자 joe는 출판될 때마다 알림을 받게 된다
+- paper 객체에는 모든 구독자를 저장하는 배열인 subscribers 프로퍼티가 존재한다. 구독은 단지 이 배열에 구독자를 추가하는 것으로 이워진다. 이벤트가 발생하면 paper는 subscrubers의 목록을 순회하면서 각 구독자에게 알린다. '알림'이란 구독자 객체의 메서드를 호출한다는 뜻이다. 따라서, 구독자는 구독할 떄 자신의 메서드 중 하나를 paper의 subscribe() 메서드에 전달해야 한다
+- paper는 unsubscribe() 메서드도 제공할 수 있다. unsubscribe에는 subscribers 배열에서 구독자를 제거한다는 뜻이다. 마지막으로 publish() 메서드 또한 중요하다 . 이 메서드는 subscribers의 메서드들을 호출한다. 요약하면 발행자 객체는 다음의 멤버들을 가져야 한다
+  - subscribers : 배열
+  - subscribe() : subscribers 배열에 구독자를 추가한다
+  - unsubscribe() : subscribers 배열에서 구독자를 제거한다
+  - publish() : subscribers를 순회하여 구독자들이 등록할 때 제공한 메서드들을 호출한다
+- 세 매서드 모두 type 매개변수를 필요로 한다. 발행자는 신문 또는 잡지 출판 등 여러가지 이벤트를 동작시킬 수 있고, 구독자는 어떤 이벤트를 구독할지 선택할 수 있기 때문이다
+- 이 멤버들은 어떤 발행자 객체에도 적용할 수 있기 때문에, 별도의 객체로 구현하는 것이 바람직 하다. 이렇게 하면 믹스인 패턴에 따라 이 멤버들을 복사해 어떤 객체든지 발행자 객체로 바꿀 수 있다
+- **발행자의 기능**을 구현해보자
+
+  ```javascript
+  var publisher = {
+    subscribers: {
+      any: [], //'이벤트 타입: 구독자의 배열' 의 형식
+    },
+    subscribe: function (fn, type) {
+      type = type || "any";
+      if ((typeof this, subscribers[type] === "undefined")) {
+        this, (subscribers[type] = []);
+      }
+      this.subscrubers[type.push(fn)];
+    },
+    unsubscribe: function (fn, type) {
+      this.visitSubscibers("unsubscribe", fn, type);
+    },
+    publish: function (publication, type) {
+      this.visitSubscibers("publish", publication, type);
+    },
+    visitSubscibers: function (action, arg, type) {
+      var pubtype = type || "any",
+        subscribers = this.subscribers[pubtype].i,
+        max = subscribers.length;
+      for (i = 0; i < max; i += 1) {
+        if (action === "publish") {
+          subscribers[i](arg);
+        } else {
+          if (subscribers[i] === arg) {
+            subscribers.splce(i, 1);
+          }
+        }
+      }
+    },
+  };
+  ```
+
+- 다음의 함수는 객체를 받아 발행자 객체로 바꿔준다. 단순히 해당 객체에 범용 발행자 메서드들을 복사해 넣ㄴ느다
+
+  ```javascript
+  function makePublisher(o) {
+    var i;
+    for (i in publisher) {
+      if (publisher.hasOwnProperty(i) && typeof publisher[i] === "function") {
+        o[i] = publisher[i];
+      }
+    }
+    o.subscibers = { any: [] };
+  }
+  ```
+
+- paper객체를 구현해보자
+- paper객체는 일간 또는 월간으로 출판하는 일만 처리한다
+  ```javascript
+  var paper = {
+    daily: function () {
+      this.publish("big news today");
+    },
+    monthly: function () {
+      this, publish("intersting analysis", "monthly");
+    },
+  };
+  ```
+- paper를 발행자로 만든다
+
+  ```javascript
+  makePublisher(paper);
+  ```
+
+- 발행자를 만들었으니, 이제 구독자 객체 joe를 살펴보자. joe는 두 개의 메서드를 가진다
+
+  ```javascript
+  var joe = {
+    drinkCoffee: function (paper) {
+      console.log(paper + "를 읽었습니다");
+    },
+    sundayPreNap: function (monthly) {
+      console.log("잠들기 전에" + monthly + "를 읽고 있습니다");
+    },
+  };
+  ```
+
+- 그리고 paper 구독자 목록에 joe 추가한다.(다르게 말해서 joe가 paper를 구독한다)
+
+  ```javascript
+  paper.subscribe(joe.drinkCoffee);
+  paper.subcribe(jow.sundayPreNap, "monthly");
+  ```
+
+- joe는 기본 이벤트 타입인 'any' 이벤트를 발생 시 호출될 메서드와, 'monthly' 타입의 이벤트 발생시 호출될 메서드를 전달했다. 이제 몇가지 이벤트를 발생시켜보다
+  ```javascript
+  paper.daily();
+  paper.daily();
+  paper.daily();
+  paper.monthly();
+  ```
+- 모든 이벤트 발행은 각각에 대응하는 joe의 메서드를 호출하게 되고 콘솔에는 다음과 같은 결과가 출력된다
+  ```
+  big news today를 읽었습니다
+  big news today를 읽었습니다
+  big news today를 읽었습니다
+  잠들기 전에 interesting analysis를 읽고있습니다
+  ```
+- paper객체 내에서 joe를 하드코딩하지 않았고, joe 객체 안에서도 역시 paper객체를 하드코딩하지 않았다는 점에서 이 코드는 훌륭하다. 모든 내용을 알고 있는 중재자 객체가 존재하지도 않는다. 객체들은 느슨하게 결합되었고, 이 객체들은 전혀 수정하지 않고 paper 에 수많은 수독자를 추가할 수 있다. 또한 joe는 언제든지 구독을 해지할 수 있다
+- 이 예제를 한층 더 발전시켜보도 joe를 발행자로도 만들어보자
+- joe가 발행자가 되어 트위터에 상태 업데이트를 포스팅한다
+
+  ```javascript
+  makePublisher(joe);
+  joe.tweet = function (msg) {
+    this, publish(msg);
+  };
+  ```
+
+- paper 홍보 부서에서 readTweets() 메서드로 독자들의 트윗을 릭고 joe를 구독하기로 결정하였다고 하자
+
+  ```javascript
+  paper.readTweets = function (tweet) {
+    alert("Call big meeting! Someone" + tweet);
+  };
+  joe.subscribe(paper.readTweets);
+  ```
+
+- 이제 joe가 트윗을 하자마자, paper는 알림을 띄우게 된다
