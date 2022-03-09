@@ -832,3 +832,144 @@ console.log(agg.current); //1
     alert("Game over");
   }, 30000);
   ```
+
+## **7.9 감시자 (Observer)**
+
+- 감시자 패턴은 클라이언트 측 자바스크립트 프로그래밍에서 널리 사용되는 패턴이다. mouseover, keypress 와 같은 모든 브라우저 이벤트가 감시자 패턴의 예다. 감시자 패턴은 **커스텀 이벤트(custom event)**라고 부르기도 하는데, 이는 브라우저가 발생시키는 이벤트가 아닌 프로그램에 의해 만들어진 이벤트를 뜻한다. 또 다른 이름으로 구독자/발행자 패턴이라고도 한다
+- 이 패턴의 주요 목적은 결합도를 낮추는 것이다. 어떤 객체가 다른 객체의 메서드를 호출하는 대신, 객체의 특별한 행동을 구독해 알림을 받는다. 구독자는 감시자 라고도 부르며, 관찰되는 객체는 발행자 또는 감시대상이라고 부른다. 발행자는 중요한 이벤트가 발생했을 때 모든 구독자에게 알려주며 주로 이벤트 객체의 형태로 메시지를 전달한다
+
+**예제: 잡지구독**
+
+- 일간 신문과 월간 잡지를 출판하는 paper라는 발행자가 있다. 구독자 joe는 출판될 때마다 알림을 받게 된다
+- paper 객체에는 모든 구독자를 저장하는 배열인 subscribers 프로퍼티가 존재한다. 구독은 단지 이 배열에 구독자를 추가하는 것으로 이워진다. 이벤트가 발생하면 paper는 subscrubers의 목록을 순회하면서 각 구독자에게 알린다. '알림'이란 구독자 객체의 메서드를 호출한다는 뜻이다. 따라서, 구독자는 구독할 떄 자신의 메서드 중 하나를 paper의 subscribe() 메서드에 전달해야 한다
+- paper는 unsubscribe() 메서드도 제공할 수 있다. unsubscribe에는 subscribers 배열에서 구독자를 제거한다는 뜻이다. 마지막으로 publish() 메서드 또한 중요하다 . 이 메서드는 subscribers의 메서드들을 호출한다. 요약하면 발행자 객체는 다음의 멤버들을 가져야 한다
+  - subscribers : 배열
+  - subscribe() : subscribers 배열에 구독자를 추가한다
+  - unsubscribe() : subscribers 배열에서 구독자를 제거한다
+  - publish() : subscribers를 순회하여 구독자들이 등록할 때 제공한 메서드들을 호출한다
+- 세 매서드 모두 type 매개변수를 필요로 한다. 발행자는 신문 또는 잡지 출판 등 여러가지 이벤트를 동작시킬 수 있고, 구독자는 어떤 이벤트를 구독할지 선택할 수 있기 때문이다
+- 이 멤버들은 어떤 발행자 객체에도 적용할 수 있기 때문에, 별도의 객체로 구현하는 것이 바람직 하다. 이렇게 하면 믹스인 패턴에 따라 이 멤버들을 복사해 어떤 객체든지 발행자 객체로 바꿀 수 있다
+- **발행자의 기능**을 구현해보자
+
+  ```javascript
+  var publisher = {
+    subscribers: {
+      any: [], //'이벤트 타입: 구독자의 배열' 의 형식
+    },
+    subscribe: function (fn, type) {
+      type = type || "any";
+      if ((typeof this, subscribers[type] === "undefined")) {
+        this, (subscribers[type] = []);
+      }
+      this.subscrubers[type.push(fn)];
+    },
+    unsubscribe: function (fn, type) {
+      this.visitSubscibers("unsubscribe", fn, type);
+    },
+    publish: function (publication, type) {
+      this.visitSubscibers("publish", publication, type);
+    },
+    visitSubscibers: function (action, arg, type) {
+      var pubtype = type || "any",
+        subscribers = this.subscribers[pubtype].i,
+        max = subscribers.length;
+      for (i = 0; i < max; i += 1) {
+        if (action === "publish") {
+          subscribers[i](arg);
+        } else {
+          if (subscribers[i] === arg) {
+            subscribers.splce(i, 1);
+          }
+        }
+      }
+    },
+  };
+  ```
+
+- 다음의 함수는 객체를 받아 발행자 객체로 바꿔준다. 단순히 해당 객체에 범용 발행자 메서드들을 복사해 넣ㄴ느다
+
+  ```javascript
+  function makePublisher(o) {
+    var i;
+    for (i in publisher) {
+      if (publisher.hasOwnProperty(i) && typeof publisher[i] === "function") {
+        o[i] = publisher[i];
+      }
+    }
+    o.subscibers = { any: [] };
+  }
+  ```
+
+- paper객체를 구현해보자
+- paper객체는 일간 또는 월간으로 출판하는 일만 처리한다
+  ```javascript
+  var paper = {
+    daily: function () {
+      this.publish("big news today");
+    },
+    monthly: function () {
+      this, publish("intersting analysis", "monthly");
+    },
+  };
+  ```
+- paper를 발행자로 만든다
+
+  ```javascript
+  makePublisher(paper);
+  ```
+
+- 발행자를 만들었으니, 이제 구독자 객체 joe를 살펴보자. joe는 두 개의 메서드를 가진다
+
+  ```javascript
+  var joe = {
+    drinkCoffee: function (paper) {
+      console.log(paper + "를 읽었습니다");
+    },
+    sundayPreNap: function (monthly) {
+      console.log("잠들기 전에" + monthly + "를 읽고 있습니다");
+    },
+  };
+  ```
+
+- 그리고 paper 구독자 목록에 joe 추가한다.(다르게 말해서 joe가 paper를 구독한다)
+
+  ```javascript
+  paper.subscribe(joe.drinkCoffee);
+  paper.subcribe(jow.sundayPreNap, "monthly");
+  ```
+
+- joe는 기본 이벤트 타입인 'any' 이벤트를 발생 시 호출될 메서드와, 'monthly' 타입의 이벤트 발생시 호출될 메서드를 전달했다. 이제 몇가지 이벤트를 발생시켜보다
+  ```javascript
+  paper.daily();
+  paper.daily();
+  paper.daily();
+  paper.monthly();
+  ```
+- 모든 이벤트 발행은 각각에 대응하는 joe의 메서드를 호출하게 되고 콘솔에는 다음과 같은 결과가 출력된다
+  ```
+  big news today를 읽었습니다
+  big news today를 읽었습니다
+  big news today를 읽었습니다
+  잠들기 전에 interesting analysis를 읽고있습니다
+  ```
+- paper객체 내에서 joe를 하드코딩하지 않았고, joe 객체 안에서도 역시 paper객체를 하드코딩하지 않았다는 점에서 이 코드는 훌륭하다. 모든 내용을 알고 있는 중재자 객체가 존재하지도 않는다. 객체들은 느슨하게 결합되었고, 이 객체들은 전혀 수정하지 않고 paper 에 수많은 수독자를 추가할 수 있다. 또한 joe는 언제든지 구독을 해지할 수 있다
+- 이 예제를 한층 더 발전시켜보도 joe를 발행자로도 만들어보자
+- joe가 발행자가 되어 트위터에 상태 업데이트를 포스팅한다
+
+  ```javascript
+  makePublisher(joe);
+  joe.tweet = function (msg) {
+    this, publish(msg);
+  };
+  ```
+
+- paper 홍보 부서에서 readTweets() 메서드로 독자들의 트윗을 릭고 joe를 구독하기로 결정하였다고 하자
+
+  ```javascript
+  paper.readTweets = function (tweet) {
+    alert("Call big meeting! Someone" + tweet);
+  };
+  joe.subscribe(paper.readTweets);
+  ```
+
+- 이제 joe가 트윗을 하자마자, paper는 알림을 띄우게 된다
