@@ -723,3 +723,112 @@ console.log(agg.current); //1
 
 - 프록시의 새로운 cache 프로퍼티에 이전 요청의 결과를 캐시해두면, 실제 http객체를 더욱 보호할 수 있다
 - 망약 vidoes 객체가 도이일한 동영상 ID에 대한 정보를 다시 요청하면, 프록시는 캐시된 결과를 반환해서 네트워크 라운드트립을 줄인다
+
+## **7.8 중재자 (Mediator)**
+
+- 크기에 상관 없이 애플리케이션은 독립된 객체들로 만들어진다. 객체간의 통신은 유지보수가 쉽고 다른 객체를 건드리지 않으면서, 애플리케이션의 일부분을 안전하게 수정할 수 있는 방식으로 이루어져야 한다
+- 객체들이 서로에 대해 너무 많은 정보를 아는 상태로 직접 통신하게 되면 서로간에 결합도가 높아져 바람직하지 않다. 객체들이 강하게 결합되면, 다른 객체들에 영향을 주지 않고 하나의 객체를 수정하기가 어렵다. 매우 간단한 변경도 어려워지고, 수정에 필요한 시간을 예측하는 것이 사실상 불가능해진다
+- 중재자 패턴은 결합도를 낮추고 유지보수를 쉽게 개선하여 이런 문제를 완화시킨다. 이 패턴에서 독립된 동료 객체들은 직접 통신하지 않고, 중재자 객체를 거친다. 동료 객체들은 자신의 상태가 변경되면 중재자에게 알리고, 중재자는 이 변경 사항을 아아야 하는 다른 동료 객체들에게 알린다
+
+**중재자 패턴 예제**
+
+- 두 명의 플레이어 중 주어진 30초 동안 버튼을 더 많이 누르는 사람이 이기는 게임 애플리케이션이 있다. 플레이어 1은 1키를 누르고 플레이어 2는 0키를 누른다. 점수판에서 현재의 점수를 표시한다
+- 이 게임을 구성하는 객체들은 다음과 같다
+  - 플레이어 1
+  - 플레이어 2
+  - 점수판
+  - 중재자
+- 중재자는 다른 모든 객체에 대해 알고 있다. 중재자는 입력 장치와 통신하며, keypress 이벤트를 처리하고, 어떤 플레이어의 차례인지 결정해서 알려준다. 플레이어는 게임을 하면서 1점을 딸 때마다 득점 사실을 중재자에게 알려준다. 중재자는 점수판 객체에 플레이어의 점수를 전달한다. 전달된 점수는 차례로 화면에 표시된다
+- 중재자 이외의 객체들은, 다른 객체들에 대해 전혀 알지 못한다. 덕분에 게임에 플레이어를 추가하거나 게임의 남은 시간을 표기하는 등의 새로운 기능을 쉽게 추가할 수 있다
+- 플레이어 객체들은 Player() 생성자로 만ㄷ르어지고 points와 name 프로퍼티를 가진다. 프로토타입에 추가된 play()메서드는 점수를 1점씩 올리고 점수 변화를 중재자(mediator)에게 알린다
+
+  ```javascript
+  function Player(name) {
+    this.points = 0;
+    this.name = name;
+  }
+  Player.prototype.play = function () {
+    this.points += 1;
+    mediator.played();
+  };
+  ```
+
+- 점수판 객체(scoreboard)는 update() 메서드를 가진다. 플레이어의 차례가 바뀔 때마다 중재자 객체가 이 메서드를 호출한다. 중재자로부터 전달받은 점수를 표시만 할 뿐이다
+
+  ```javascript
+  var scoreboard = {
+    //점수를 표시할 HTML 엘리먼트
+    elemente: document.getClementById("results"),
+
+    //점수 표시를 갱신한다
+    update: function (score) {
+      var i,
+        msg = "";
+      for (i in score) {
+        if (score.hasOwnProperty(i)) {
+          mag += "<p><strong>" + i + "</strong>";
+          msg += score[i];
+          mas += "</p>";
+        }
+      }
+      this.element.innerHTML = msg;
+    },
+  };
+  ```
+
+- 중재자 객체(meiator)는 게임을 초기화한다
+- setup() 메서드 안에서 player객체를 만들고, players 프로퍼티에 플레이어 객체들의 참조를 저장해준다
+- player()메서드는 차례가 바뀔 때마다 각 츨레이어 객체에 의해 호출된다. 이 메서드는 score 해시를 업데이트한 다음 scoreboard 객체에 전달해 화면에 점수를 표시한다
+- 마지막 메서드인 keypress()는 키보드 이벤트를 처리하고 어떤 플레이어의 차례인지 판단해 알려준다
+
+  ```javascript
+  var mediator = {
+    //모든 player 객체들
+    players: {},
+
+    //초기화
+    setup: function() {
+      var players = this.players
+      players.home = new Player('Home')
+      players.guest = new Player('Guest')
+    },
+
+    //누군가 play하고 점수를 업데이트 한다
+    played: function () {
+      var players = this,.players,
+          score = {
+            Home: players.home.points,
+            Guest: players.guest.points
+          }
+          scoreboard.update(score)
+    },
+
+    //사용자 인터렉션을 핸들링한다
+    keypress: function() {
+      e= e || window.event //IE
+      if(e.which === 49) { // 키 "1"
+        mediator.players.home.play()
+        return
+      }
+      if(e.which === 48) { //키 "2"
+        mediator.players.guest.play()
+        return
+      }
+    }
+  }
+
+  ```
+
+- 그리고 마지막으로 게임을 시작하고 종료시킨다
+
+  ```javascript
+  //시작!
+  mediator.setup();
+  window.onkeypress = mediator.keypress;
+
+  //30초 후에 게임을 종료시킨다
+  setTiumeout(function () {
+    window.onkeypress = null;
+    alert("Game over");
+  }, 30000);
+  ```
