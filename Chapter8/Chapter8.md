@@ -39,3 +39,120 @@
   ```
 
 - 관심사를 분리하면 개발 및 유지보수 그리고 기존의 웹애플리케이션을 업데이트하기 또한 용이해진다. 문제가 생겼을 때 어느 부분을 확인하면 되는지 알 수 있기 때문이다. 자바스크립트 오류가 발생하면, 문제를 해결하기 위해 HTML이나 CSS를 찾아볼 필요가 없다
+
+## **8.2 DOM 스크립팅**
+
+- 페이지의 DOM 트리를 다루는 것은 클라이언트 측 자바스크립트에서 처리하는 가장 흔한 일 중 하나다. 동시에 DOM 메서드가 브라우저간에 일관성 없이 구현되어 있기 때문에 가장 골치아픈 작업이기도 하다
+- 때문에 브라우저간의 차이점을 추상화한 훌륭한 자바슬크립트 라이브러리를 사용하면 개발 속도를 크게 향상시킬 수 있다
+
+**DOM접근**
+
+- DOM접근은 비용이 많이 드는 작업이다
+- 자바스크립트이 성능에서 DOM접근은 가장 흔한 병목 지점이다. 일반적으로 DOM은 자바스크립트 엔진과 별개로 구현되었기 때문이다. 자바스크립트 애플리케이션에서 DOM을 전혀 사용하지 않을 수도 있기 때문에, 브라우저 입장에서 보면 이런 접근 방식이 타당하다. 또한, 이러한 분리된 구현을 통해 자바스크립트 외의 언어들도 DOM작업을 할 수 있게 된다
+- **핵심을 말하자면 DOM접근을 최소화해야한다**
+  1. 루프 내에서 DOM 접그느을 피한다
+  2. DOM 참조를 지역 변수에 할당하여 사용한다
+  3. 가능하면 셀렉터 API를 사용한다
+  4. HTML 콜렉션을 순회할 때 length를 캐시하여 사용한다
+- 예제 1: 두 번째 루프는 코드가 길어지기 했지만 브라우저에 따라 수십에서 수백 배 빠르다
+
+  ```javascript
+  //안티패턴
+  for (var i = 0; i < 100; i += 1) {
+    document.getElementById("result").innerHTML += i + ",";
+  }
+
+  //지역 변수를 활용하는 개선안
+  var i,
+    content = "";
+  for (i = 0; i < 100; i += 1) {
+    content += i + ",";
+  }
+  document.getElementById("result").innerHTML += conetent;
+  ```
+
+- 예제 2: 지역 변수를 활용하는 첫 예제보다 한줄이 더 길고, 변수가 하나 더 필요하지만 더 좋은 코드다
+
+  ```javascript
+  //안티패턴
+  var padding = document.getEmementById("result").style.padding;
+  margin = document.getEmementById("result").style.margin;
+
+  //개선안
+  var style = document.getEmementById("result").style;
+  padding = style.padding;
+  margin = style.margin;
+  ```
+
+- 예제 3: 셀렉터 API 사용
+
+  ```javascript
+  document.querySelector("ul .sekected");
+  document.querySelectorAll("#widget .class");
+  ```
+
+  - 이 메서드들은 CSS 셀렉터 문자열을 받아 그에 해당하는 DOM 모드의 목록을 반환한다. 셀렉터 메서드들은 IE8 이상을 포함한 대부분의 최신 브라우버에서 사용가능하며 다른 DOM 메서드를 사용한 선택 방식보다 항상 빠르다
+  - 다중적인 자바스크립트 라이브러리들도 최신 버전에서 셀렉터 API를 활용하고 있으므로, 사용중인 라이브러리가 최신 버전인지 반드시 확인해보아야 한다
+  - 자주 접근하는 엘리먼트에 id 속성을 추가하는 것도 성능 향상에 도움이 될 수 있다. document.getElementById(myid)가 노드를 찾는 가장 쉽고 빠른 방법이기 때문이다
+
+**DOM조작**
+
+- DOM 엘리먼트 접근 이외에도, DOM 엘리먼트를 변경 또는 제거라거나 새로운 엘리먼트를 추가하는 작업도 자주 필요하다. DOM 업데이트시 브라우저는 화면을 다시 그리고(repaint), 다시 재구조화(reflow)하는데, 이 또한 비용이 많이 드는 작업니다
+- 원칙적으로 DOM 업데이트를 최소화하는게 좋다. 이를 위해서는 변경 사항들을 일괄 처리하거나, 실제 문서 트리 외부에서 변경 작업을 수행해야 한다
+- 비교적 큰 서브 트리를 만들어야 한다면, 서브 트리를 완전히 생성한 다음에 문서에 추가해야한다. 이를 위해 문저 조각(document fragment)에 모든 하위 노드를 추가하는 방법을 사용할 수 있다
+- 예제 1: 문서에 노드를 붙일 때 피해야할 안티패턴
+
+  ```javascript
+  //안티패턴
+  //노드를 만들고 곧바로 문서에 붙인다
+
+  var p, t;
+
+  p = document.createElement("p");
+  t = document.createTextNode("first paragraph");
+  p.appendChild(t);
+
+  document.body.appendChild(p); //곧바로 문서에 붙인다
+
+  p = document.createElement("p");
+  t = document.createTextNode("second paragraph");
+  p.appendChild(t);
+
+  document.body.appendChild(p); //곧바로 문서에 붙인다
+  ```
+
+- 개선안은 문서 조각을 생성해 외부에서 수정한 후 , 처리가 완전히 끝난 다음에 실제 DOM에 추가하는 것이다
+- 편리하게도, DOM 트리에 문서 조각을 추가하면, 조각 자체는 추가되지 않고 그 내용만 추가된다. 즉 문서 조각은 별도의 부모 노드 없이도 여러 개의 노드를 감쌀 수 있는 훌륭한 방법이다 (여러 개의 p태그를 div안에 넣지 않고도 한꺼번에 처리할 수 있다)
+
+- 예제 2: 문서조각을 사용한 개선안
+
+  ```javascript
+  var p, t, frag;
+
+  frag = document.createDocumentFragment();
+
+  p = document.createElement("p");
+  t = document.createTextNode("first paragraph");
+  p.appendChild(t);
+  frag.appentChild(p);
+
+  p = document.createElement("p");
+  t = document.createTextNode("second paragraph");
+  p.appendChild(t);
+  frag.appentChild(p);
+
+  document.body.appendChild(frag);
+  ```
+
+- 앞서 본 안티패턴 코드예제와 달리 p 엘리먼트를 생성할 때마다 문서를 변경하지 않고 마지막에 단 한번만 변경한다. 화면을 다시 그리고 재계산 하는 과정도 한 번만 이루어진다
+- 문서 조각은 새로운 노드를 트리에 추가할 때 유용하다. 하지만 문서에 이미 존재하는 트리를 변경할 때는 변경하려는 서브 트리의 루트를 복제해서 변경한 뒤 노드와 복제한 노드를 맞바꾸면 된다
+- 예제 3: 이미 존재하는 트리를 변경
+
+  ```javascript
+  var oldnode = document.getElementById("result");
+  clone = oldnode.cloneNode(true);
+
+  //복제본을 가지고 변경작업을 처리한다
+  //변경이 끝나고 나면 원래의 노드와 교체한다
+  oldnode.parentNode.replaceChild(clone, oldnode);
+  ```
