@@ -156,3 +156,120 @@
   //변경이 끝나고 나면 원래의 노드와 교체한다
   oldnode.parentNode.replaceChild(clone, oldnode);
   ```
+
+## **8.3 이벤트**
+
+- 브라우저 스크립팅의 또 다른 영역은 click, mouseover와 같은 이벤트 처리다
+- 브라우저 이벤트 처리는 최악의 일관성을 가지고 있어서 숱한 좌절의 원인이 되곤 한다. 자바스크립트 라이브러리를 사용하면 W3C를 준수하는 브라우저와 IE(9버전 미만)를 모두 지원하기 위해 두 벌로 작업하는 수고를 덜 수 있다
+- 간단한 페이지에서는 라이브러리를 사용하지 않을 수도 있고, 라이브러리를 직접 만들 수도 있기 때문에 이벤트 처리를 위한 핵심 부분을 살펴보도록 하자
+
+**이벤트 처리**
+
+- 클릭할 때마다 카운터의 숫자를 증가시키는 버튼이 있다고 가정해보자. 인라인 onclick 속성을 추가하면 모든 브라우저에서 잘 동작하겠지만 관심사의 분리와 점진적인 개선의 원칙에 위배된다. 따라서 마크업을 건드리지 않고 항상 자바스크립트에서 이벤트 리스너를 처리해야 한다
+- 예제1 : 이벤트 처리
+
+  - 다음과 같은 마크업이 있다고 가정하다
+
+  ```javascript
+  <button id="clickme">Click me: 0</button>
+  ```
+
+  -간단하게 노드의 onclick 프로퍼티에 함수를 할당할 수도 있지만, 이 방법은 한번밖에 쓸 수 없다
+
+  ```javascript
+  var b = document.getElementByid("clickme"),
+    count = 0;
+  b.onclick = function () {
+    count += 1;
+    b.innerHTML = "Click me: " + count;
+  };
+  ```
+
+  - 이 패턴으로는 하나의 클릭 이벤트에 여러 개의 함수가 실행되게 하면서 동시에 낮은 결합도를 유지하기 어렵다. 기술적으로 가능하기는 하다. onclick에 이미 함수가 할당되었는지 확읺하고, 할당되어 있다면 이미 존재하는 함수를 새로운 함수안에 추가하고 이를 onclick의 값으로 대체하면 된다
+  - 그렇지만 addEventListener() 메서드를 사용하는 게 훨씬 깔끔한 해결책이다. 이 메서드는 IE8 버전까지는 존재하지 않기 때문에 IE8 버전 이하에서는 attachEvent() 메서드를 사용해야 한다
+
+  ```javascript
+  var b = document.getElementById("clickme");
+  if (document.addEventListener) {
+    //W3C
+    b.addEventListener("click", myHandler, false);
+  } else if (document.attachEvent) {
+    //IE
+    b.attachEvent("onclick", myHandler);
+  } else {
+    //최후의 수단
+    b.onclick = myHandler;
+  }
+  ```
+
+  - 이제 버튼을 클릭하면, myHandler() 함수가 실행될것이다. 이 함수가 버튼의 라벨에 쓰인 "Click me: 0"의 숫자를 증가시키도록 만들어보자
+  - 조금더 흥미롭게, 여러 개의 버튼을 두고 모든 버튼이 myHandler() 함수 하나만 사용하게 만들것이다. 각 버튼 노드에 대한 참조와 카운터 숫자를 저장해두는 것은 비효율적이므로, 클릭할 때마다 생성되는 이벤트 객체로부터 필요한 정보를 구한다
+
+  ```javascript
+  function myHandler(e) {
+    var src, parts;
+
+    //이벤트 객체와 소스 엘리먼트를 가져온다
+    e = e || window.event;
+    src = e.target || t.srcElement;
+
+    //버튼의 라벨을 변경한다
+    parts = src.innerHTML.split(": ");
+    parts[1] = parseInt(parts[i], 10) + 1;
+    src.innerHTML = parts[0] + ": " + parts[1];
+
+    //이벤트가 상위 노드로 전파되지 않게 한다
+    if (typeof e.stopPropagation === "function") {
+      e.stopPropagation();
+    }
+    if (typeof e.cancelBubble !== "undefined") {
+      e.cancelBulle = true;
+    }
+
+    //기본 동작이 수행되지 않게 한다
+    if (typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
+    if (typeof e.returnValue !== "undefined") {
+      e.returnValue = false;
+    }
+  }
+  ```
+
+  - 이벤트 핸들러 함수는 네 부분으로 구성되어 있다
+    1. 우선 이벤트 객체를 가져온다. 이벤트 객체는 이벤트에 대한 정보와 이벤트가 발생한 엘리먼트에 대한 정보를 가지고 이싿. 이 이벤트 객체는 콜백 이벤트 핸들러에 인자로 전달되며 onclick 프로퍼티를 사용한 경우에는 전역 프로퍼티인 window.event를 통해 접근할 수 있다
+    2. 두 번째 부분은 버튼의 이름을 변경하는 실제 작업을 수행한다
+    3. 그 다음에는 이벤트가 상위 노드로 전파되지 않게 한다. 사실 이 예제에서는 필요하지 않지만, 일반적으로 이벤트 전파를 막지 않으면 문서의 최상단 또는 window 객체에까지 버블링되어 올라갈 수 있다. 여기서도 두 가지 방법, 즉 W3C 표준인 방법과 IE를 위한 방법을 사용한다
+    4. 마지막으로, 기본 동작이 수행되지 않게 한다. 어떤 이벤트들은 지정된 기본 동작을 하는데, 필요에 따라 preventDefault() 를 사용해 이를 막을 수 있다
+  - 중복 작업이 반복되기 때문에, 퍼사드 메서드로 이벤트 유틸리티를 만들어두는 게 좋다
+
+**이벤트 위임**
+
+- 이벤트 위임 패턴은 이벤트 버블링을 이용해서 개별 노드에 붙는 이벤트 리스너의 개수를 줄여준다. div엘리먼트 내에 열개의 버튼이 있다면, 각 버튼 엘리먼트에 리스너를 붙이는 대신 div 엘리먼트에 하나의 이벤트 리스너만 붙인다
+- 예제 1: div 안에 세 개의 버튼을 가지는 예제
+
+  ```javascript
+  //사용할 마크업
+  <div id="click-wrap">
+    <button>Click me: 0</button>
+    <button>Click me top: 0</button>
+    <button>Click me three: 0</button>
+  </div>
+  ```
+
+  - 각 버튼에 이벤트 리스너를 붙이는 대신 "click-wrap" div 하나의 리스너만을 붙일 것이다. 그리고 불필요한 클릭을 걸러낼 수 있도록 이전 예제의 myHandler() 함수를 약간 수정해서 사용한다
+  - 다음과 같이 이벤트가 발생한 노드의 nodeName이 "button" 인지 확인하도록 myHandler()를 변경하였다
+
+    ```javascript
+    //...
+    //이벤트 객체와 이벤트가 발생한 엘리먼트를 가져온다
+    e = e || window.event;
+    src = e.target || e.srcElement;
+
+    if (src.nodeName.toLowerCase() !== "button") {
+      return;
+    }
+    //...
+    ```
+
+  - 이벤트 위임에는 불필요한 이벤트를 걸러내는 코드가 약간 추가된다는 단점이 있다. 그러나 성능상의 이점과 코드의 간결성으로 인한 장점이 단점보다 훨씬 크기 때문에 적극 추천하는 패턴이다
